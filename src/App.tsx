@@ -1,240 +1,423 @@
-import { useEffect, useMemo, useState } from 'react'
-import type { FormEvent } from 'react'
+import { useMemo, useState } from 'react'
 import {
+  Activity,
+  AlertTriangle,
+  BarChart3,
+  Bot,
+  CalendarClock,
   CheckCircle2,
+  ChevronRight,
   CircleDollarSign,
   ClipboardList,
-  FilePlus2,
+  Cloud,
   Gauge,
+  Inbox,
+  Link2,
+  Mail,
+  MapPinned,
+  MessageSquareReply,
   PackageCheck,
-  ReceiptText,
+  PlugZap,
+  Radio,
+  Route,
+  Search,
   Send,
+  ShieldCheck,
+  Sparkles,
   Truck,
+  UserRoundCheck,
+  UsersRound,
+  WalletCards,
 } from 'lucide-react'
 import './App.css'
 
-type Page = '/add-load' | '/loads' | '/tasks' | '/invoices' | '/'
-type TaskStatus = 'Open' | 'Complete'
-type InvoiceStatus = 'Draft' | 'Sent' | 'Paid'
+type Status = 'connected' | 'mocked' | 'degraded' | 'disconnected'
+type LoadSource = 'DAT' | 'Truckstop' | 'Email' | 'Manual'
+type LoadStage = 'Needs appointment' | 'Booked' | 'In transit' | 'Delivered' | 'Invoice pending'
+type Risk = 'low' | 'medium' | 'high'
+
+type CarrierOrg = {
+  id: string
+  name: string
+  dot: string
+  mc: string
+  lanes: string[]
+}
+
+type Driver = {
+  id: string
+  name: string
+  phone: string
+  eldProvider: string
+  hoursAvailable: number
+}
+
+type TruckAsset = {
+  id: string
+  unit: string
+  driverId: string
+  status: 'available' | 'dispatched' | 'shop'
+  location: string
+  equipment: string
+}
+
+type ConnectedAccount = {
+  id: string
+  provider: string
+  category: 'Load board' | 'Email' | 'Calendar' | 'Tracking' | 'ELD'
+  status: Status
+  sync: string
+  notes: string
+}
 
 type Load = {
   id: string
-  loadNumber: string
-  company: string
-  pickupCity: string
-  deliveryCity: string
-  pickupDate: string
-  deliveryDate: string
+  source: LoadSource
+  customer: string
+  broker: string
+  pickup: string
+  delivery: string
+  pickupWindow: string
+  deliveryWindow: string
   rate: number
-  estimatedCost: number
-  createdAt: string
+  miles: number
+  equipment: string
+  stage: LoadStage
+  risk: Risk
+  truckId?: string
+  driverId?: string
+  contacts: string[]
+  appointmentStatus: string
+  trackingStatus: string
+  podStatus: string
+  invoiceStatus: string
+  emailThreadId: string
+  marginCost: number
 }
 
-type Task = {
+type EmailThread = {
   id: string
-  loadId: string
-  loadNumber: string
-  title: string
-  dueDate: string
-  status: TaskStatus
+  from: string
+  subject: string
+  preview: string
+  age: string
+  suggestedReply: string
+  loadId?: string
 }
 
-type Invoice = {
+type GpsPing = {
+  time: string
+  location: string
+  speed: number
+  source: string
+}
+
+type RmiEvent = {
+  loadId: string
+  event: string
+  impact: number
+}
+
+type CustomerAccount = {
   id: string
-  loadId: string
-  loadNumber: string
-  company: string
-  amount: number
-  status: InvoiceStatus
-  createdAt: string
+  name: string
+  owner: string
+  lastTouch: string
+  pipeline: string
+  openLoads: number
+  health: 'strong' | 'watch' | 'new'
 }
 
-type FreightState = {
-  loads: Load[]
-  tasks: Task[]
-  invoices: Invoice[]
+const org: CarrierOrg = {
+  id: 'org_okgo_carrier_v1',
+  name: 'OK GO Freight — Carrier V1',
+  dot: 'DOT 3849217',
+  mc: 'MC 1459082',
+  lanes: ['SLC <> Phoenix', 'Denver <> Dallas', 'Boise <> Seattle'],
 }
 
-type LoadForm = {
-  loadNumber: string
-  company: string
-  pickupCity: string
-  deliveryCity: string
-  pickupDate: string
-  deliveryDate: string
-  rate: string
-  estimatedCost: string
+const drivers: Driver[] = [
+  { id: 'drv-1', name: 'Maya Torres', phone: '(385) 555-0184', eldProvider: 'Samsara', hoursAvailable: 7.5 },
+  { id: 'drv-2', name: 'Cameron Lee', phone: '(720) 555-0128', eldProvider: 'Motive', hoursAvailable: 4.25 },
+  { id: 'drv-3', name: 'Andre Price', phone: '(801) 555-0193', eldProvider: 'Geotab', hoursAvailable: 9.75 },
+  { id: 'drv-4', name: 'Nia Patel', phone: '(208) 555-0107', eldProvider: 'Manual', hoursAvailable: 10.5 },
+]
+
+const trucks: TruckAsset[] = [
+  { id: 'trk-21', unit: 'OKG-211', driverId: 'drv-1', status: 'dispatched', location: 'Green River, UT', equipment: '53 Van' },
+  { id: 'trk-44', unit: 'OKG-244', driverId: 'drv-2', status: 'dispatched', location: 'Pueblo, CO', equipment: 'Reefer' },
+  { id: 'trk-72', unit: 'OKG-272', driverId: 'drv-3', status: 'available', location: 'Salt Lake City, UT', equipment: '53 Van' },
+  { id: 'trk-83', unit: 'OKG-283', driverId: 'drv-4', status: 'available', location: 'Boise, ID', equipment: 'Flatbed' },
+]
+
+const connectedAccounts: ConnectedAccount[] = [
+  { id: 'dat', provider: 'DAT', category: 'Load board', status: 'mocked', sync: 'Adapter shell', notes: 'Search and offer ingest placeholder' },
+  { id: 'truckstop', provider: 'Truckstop / Internet Truckstop', category: 'Load board', status: 'mocked', sync: 'Adapter shell', notes: 'Post-truck and load search placeholder' },
+  { id: 'gmail', provider: 'Gmail', category: 'Email', status: 'connected', sync: '3 min ago', notes: 'Mock OAuth account with inbound thread parser' },
+  { id: 'outlook', provider: 'Outlook', category: 'Email', status: 'mocked', sync: 'Adapter shell', notes: 'Microsoft Graph placeholder' },
+  { id: 'gcal', provider: 'Google Calendar', category: 'Calendar', status: 'connected', sync: '12 min ago', notes: 'Appointment writeback mock enabled' },
+  { id: 'macropoint', provider: 'MacroPoint', category: 'Tracking', status: 'degraded', sync: '28 min ago', notes: 'Tracking invite status placeholder' },
+  { id: 'fourkites', provider: 'FourKites', category: 'Tracking', status: 'mocked', sync: 'Adapter shell', notes: 'Visibility API placeholder' },
+  { id: 'samsara', provider: 'Samsara', category: 'ELD', status: 'connected', sync: 'Live mock', notes: 'Vehicle and HOS adapter shell' },
+  { id: 'motive', provider: 'Motive', category: 'ELD', status: 'mocked', sync: 'Adapter shell', notes: 'Vehicle location placeholder' },
+  { id: 'geotab', provider: 'Geotab', category: 'ELD', status: 'mocked', sync: 'Adapter shell', notes: 'Device feed placeholder' },
+  { id: 'manual-eld', provider: 'Manual ELD', category: 'ELD', status: 'connected', sync: 'Manual entry', notes: 'Dispatcher-entered check calls' },
+]
+
+const loads: Load[] = [
+  {
+    id: 'OKG-1048',
+    source: 'DAT',
+    customer: 'Summit Retail Group',
+    broker: 'Blue Ridge Logistics',
+    pickup: 'Salt Lake City, UT',
+    delivery: 'Phoenix, AZ',
+    pickupWindow: 'Today 14:00-16:00',
+    deliveryWindow: 'Apr 25 08:00',
+    rate: 2850,
+    miles: 663,
+    equipment: '53 Van',
+    stage: 'Needs appointment',
+    risk: 'medium',
+    truckId: 'trk-72',
+    driverId: 'drv-3',
+    contacts: ['dispatch@blueridge.example', '(404) 555-0144'],
+    appointmentStatus: 'Pickup requested, delivery pending',
+    trackingStatus: 'ELD available, MacroPoint invite unsent',
+    podStatus: 'Not due',
+    invoiceStatus: 'Not ready',
+    emailThreadId: 'em-1',
+    marginCost: 1825,
+  },
+  {
+    id: 'OKG-1051',
+    source: 'Truckstop',
+    customer: 'Cascade Foods',
+    broker: 'Northstar Brokerage',
+    pickup: 'Denver, CO',
+    delivery: 'Dallas, TX',
+    pickupWindow: 'Today 18:00',
+    deliveryWindow: 'Apr 26 11:00',
+    rate: 3650,
+    miles: 794,
+    equipment: 'Reefer',
+    stage: 'In transit',
+    risk: 'high',
+    truckId: 'trk-44',
+    driverId: 'drv-2',
+    contacts: ['ops@northstar.example', '(312) 555-0178'],
+    appointmentStatus: 'Delivery appointment unconfirmed',
+    trackingStatus: 'FourKites pending, ELD pings active',
+    podStatus: 'Not due',
+    invoiceStatus: 'Not ready',
+    emailThreadId: 'em-2',
+    marginCost: 2480,
+  },
+  {
+    id: 'OKG-1054',
+    source: 'Email',
+    customer: 'Wasatch Building Supply',
+    broker: 'Direct shipper',
+    pickup: 'Boise, ID',
+    delivery: 'Seattle, WA',
+    pickupWindow: 'Apr 25 07:30',
+    deliveryWindow: 'Apr 26 09:30',
+    rate: 3100,
+    miles: 504,
+    equipment: 'Flatbed',
+    stage: 'Booked',
+    risk: 'low',
+    truckId: 'trk-83',
+    driverId: 'drv-4',
+    contacts: ['traffic@wasatch.example', '(206) 555-0163'],
+    appointmentStatus: 'Both appointments confirmed',
+    trackingStatus: 'Manual check calls every 4h',
+    podStatus: 'Not due',
+    invoiceStatus: 'Not ready',
+    emailThreadId: 'em-3',
+    marginCost: 1940,
+  },
+  {
+    id: 'OKG-1042',
+    source: 'Manual',
+    customer: 'Intermountain Medical',
+    broker: 'Direct shipper',
+    pickup: 'Reno, NV',
+    delivery: 'Provo, UT',
+    pickupWindow: 'Yesterday 10:00',
+    deliveryWindow: 'Today 17:00',
+    rate: 2200,
+    miles: 516,
+    equipment: '53 Van',
+    stage: 'Invoice pending',
+    risk: 'medium',
+    truckId: 'trk-21',
+    driverId: 'drv-1',
+    contacts: ['ap@intermountain.example', '(801) 555-0188'],
+    appointmentStatus: 'Completed',
+    trackingStatus: 'Delivered, final ping captured',
+    podStatus: 'POD missing signature page',
+    invoiceStatus: 'Hold for clean POD',
+    emailThreadId: 'em-4',
+    marginCost: 1510,
+  },
+]
+
+const threads: EmailThread[] = [
+  {
+    id: 'em-1',
+    from: 'Ari Chen, Blue Ridge',
+    subject: 'Need SLC pickup appointment for OKG-1048',
+    preview: 'Can your team confirm a 15:00 pickup and send tracking?',
+    age: '11m',
+    loadId: 'OKG-1048',
+    suggestedReply: 'Confirm 15:00 pickup, request delivery appointment, and send MacroPoint invite.',
+  },
+  {
+    id: 'em-2',
+    from: 'Northstar Tracking',
+    subject: 'FourKites invite not accepted',
+    preview: 'Customer needs location visibility before 17:00 or load may be marked non-compliant.',
+    age: '24m',
+    loadId: 'OKG-1051',
+    suggestedReply: 'Send ETA from ELD ping and ask broker to reissue the FourKites link.',
+  },
+  {
+    id: 'em-3',
+    from: 'Wasatch Traffic',
+    subject: 'Boise load confirmation attached',
+    preview: 'Rate confirmation and site rules for tomorrow morning pickup.',
+    age: '1h',
+    loadId: 'OKG-1054',
+    suggestedReply: 'Confirm received, restate driver/unit, and request contact for delivery dock.',
+  },
+  {
+    id: 'em-4',
+    from: 'Intermountain AP',
+    subject: 'POD page missing signature',
+    preview: 'Invoice cannot be processed until the signed POD page is resent.',
+    age: '2h',
+    loadId: 'OKG-1042',
+    suggestedReply: 'Acknowledge hold, request driver image re-upload, and promise corrected invoice packet today.',
+  },
+]
+
+const gpsPings: GpsPing[] = [
+  { time: '13:08', location: 'Pueblo, CO', speed: 62, source: 'Motive ELD' },
+  { time: '12:37', location: 'Walsenburg, CO', speed: 65, source: 'Motive ELD' },
+  { time: '12:02', location: 'Colorado Springs, CO', speed: 0, source: 'MacroPoint' },
+  { time: '11:28', location: 'Monument, CO', speed: 58, source: 'Motive ELD' },
+]
+
+const rmiEvents: RmiEvent[] = [
+  { loadId: 'OKG-1051', event: 'Late tracking acceptance', impact: -4 },
+  { loadId: 'OKG-1054', event: 'Appointment confirmed before pickup', impact: 3 },
+  { loadId: 'OKG-1042', event: 'POD exception after delivery', impact: -3 },
+  { loadId: 'OKG-1048', event: 'Fast broker response under 15m', impact: 2 },
+]
+
+const crmAccounts: CustomerAccount[] = [
+  { id: 'acct-1', name: 'Summit Retail Group', owner: 'Greg', lastTouch: 'Today', pipeline: '$42.5k open', openLoads: 3, health: 'strong' },
+  { id: 'acct-2', name: 'Cascade Foods', owner: 'Mina', lastTouch: '24m ago', pipeline: '$18.2k at risk', openLoads: 1, health: 'watch' },
+  { id: 'acct-3', name: 'Wasatch Building Supply', owner: 'Greg', lastTouch: '1h ago', pipeline: '$31.4k direct', openLoads: 2, health: 'new' },
+]
+
+function optimizeLoad(load: Load, availableTruckCount: number) {
+  const rpm = load.rate / load.miles
+  const margin = load.rate - load.marginCost
+  const riskPenalty = load.risk === 'high' ? 22 : load.risk === 'medium' ? 10 : 0
+  const sourceBoost = load.source === 'Email' || load.source === 'Manual' ? 8 : 3
+  const capacityBoost = availableTruckCount > 1 && load.stage === 'Needs appointment' ? 8 : 0
+  const score = Math.round(Math.min(98, rpm * 11 + margin / 80 + sourceBoost + capacityBoost - riskPenalty))
+  const recommendedAction =
+    score >= 78
+      ? 'Accept and dispatch'
+      : score >= 62
+        ? 'Negotiate rate / confirm appointment'
+        : 'Hold until capacity improves'
+
+  return { score, rpm, margin, recommendedAction }
 }
 
-const storageKey = 'freightsimple.manual-load-workflow'
-const taskTitles = ['Confirm pickup', 'Deliver load', 'Request POD', 'Send invoice', 'Follow up payment']
+function calculateRmiScore(allLoads: Load[], events: RmiEvent[]) {
+  const base = 86
+  const riskDrag = allLoads.filter((load) => load.risk === 'high').length * -3
+  const appointmentBoost = allLoads.filter((load) => load.appointmentStatus.includes('confirmed')).length * 2
+  const eventImpact = events.reduce((total, event) => total + event.impact, 0)
+  return Math.max(0, Math.min(100, base + riskDrag + appointmentBoost + eventImpact))
+}
 
-const starterState: FreightState = {
-  loads: [
-    {
-      id: 'load-demo-1',
-      loadNumber: 'OKG-1048',
-      company: 'Summit Retail Group',
-      pickupCity: 'Salt Lake City, UT',
-      deliveryCity: 'Phoenix, AZ',
-      pickupDate: '2026-04-24',
-      deliveryDate: '2026-04-25',
-      rate: 2850,
-      estimatedCost: 1825,
-      createdAt: '2026-04-24T09:30:00.000Z',
-    },
-  ],
-  tasks: [
-    { id: 'task-demo-1', loadId: 'load-demo-1', loadNumber: 'OKG-1048', title: 'Confirm pickup', dueDate: '2026-04-24', status: 'Open' },
-    { id: 'task-demo-2', loadId: 'load-demo-1', loadNumber: 'OKG-1048', title: 'Deliver load', dueDate: '2026-04-25', status: 'Open' },
-    { id: 'task-demo-3', loadId: 'load-demo-1', loadNumber: 'OKG-1048', title: 'Request POD', dueDate: '2026-04-25', status: 'Open' },
-    { id: 'task-demo-4', loadId: 'load-demo-1', loadNumber: 'OKG-1048', title: 'Send invoice', dueDate: '2026-04-25', status: 'Open' },
-    { id: 'task-demo-5', loadId: 'load-demo-1', loadNumber: 'OKG-1048', title: 'Follow up payment', dueDate: '2026-05-02', status: 'Open' },
-  ],
-  invoices: [
-    {
-      id: 'inv-demo-1',
-      loadId: 'load-demo-1',
-      loadNumber: 'OKG-1048',
-      company: 'Summit Retail Group',
-      amount: 2850,
-      status: 'Draft',
-      createdAt: '2026-04-24T09:30:00.000Z',
-    },
-  ],
+function money(value: number) {
+  return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(value)
+}
+
+function statusLabel(status: Status) {
+  return status === 'connected' ? 'Connected' : status === 'mocked' ? 'Mock shell' : status === 'degraded' ? 'Needs attention' : 'Disconnected'
 }
 
 const nav = [
-  { path: '/', label: 'Dashboard', icon: Gauge },
-  { path: '/add-load', label: 'Add Load', icon: FilePlus2 },
-  { path: '/loads', label: 'Loads', icon: Truck },
-  { path: '/tasks', label: 'Tasks', icon: ClipboardList },
-  { path: '/invoices', label: 'Invoices', icon: ReceiptText },
-] satisfies { path: Page; label: string; icon: typeof Gauge }[]
-
-const emptyForm: LoadForm = {
-  loadNumber: '',
-  company: '',
-  pickupCity: '',
-  deliveryCity: '',
-  pickupDate: '',
-  deliveryDate: '',
-  rate: '',
-  estimatedCost: '',
-}
+  { id: 'dashboard', label: 'Dashboard', icon: Gauge },
+  { id: 'loads', label: 'Load Hub', icon: ClipboardList },
+  { id: 'detail', label: 'Load Detail', icon: Route },
+  { id: 'inbox', label: 'Operations Inbox', icon: Inbox },
+  { id: 'tracking', label: 'Tracking', icon: MapPinned },
+  { id: 'rmi', label: 'RMI', icon: ShieldCheck },
+  { id: 'crm', label: 'CRM', icon: UsersRound },
+  { id: 'profit', label: 'Profit Intel', icon: CircleDollarSign },
+  { id: 'integrations', label: 'Integrations', icon: PlugZap },
+]
 
 function App() {
-  const [page, setPage] = useState<Page>(() => normalizePath(window.location.pathname))
-  const [state, setState] = useState<FreightState>(() => readState())
-  const [lastCreated, setLastCreated] = useState<string>('')
-
-  useEffect(() => {
-    const onPopState = () => setPage(normalizePath(window.location.pathname))
-    window.addEventListener('popstate', onPopState)
-    return () => window.removeEventListener('popstate', onPopState)
-  }, [])
-
-  useEffect(() => {
-    window.localStorage.setItem(storageKey, JSON.stringify(state))
-  }, [state])
+  const [activeView, setActiveView] = useState('dashboard')
+  const [selectedLoadId, setSelectedLoadId] = useState(loads[1].id)
+  const selectedLoad = loads.find((load) => load.id === selectedLoadId) ?? loads[0]
+  const selectedDriver = drivers.find((driver) => driver.id === selectedLoad.driverId)
+  const selectedTruck = trucks.find((truck) => truck.id === selectedLoad.truckId)
+  const selectedThread = threads.find((thread) => thread.id === selectedLoad.emailThreadId)
 
   const metrics = useMemo(() => {
-    const openTasks = state.tasks.filter((task) => task.status === 'Open')
-    const openInvoices = state.invoices.filter((invoice) => invoice.status !== 'Paid')
+    const availableTrucks = trucks.filter((truck) => truck.status === 'available').length
+    const unansweredEmails = threads.length
+    const trackingCompliant = Math.round((loads.filter((load) => !load.trackingStatus.includes('pending')).length / loads.length) * 100)
+    const rmi = calculateRmiScore(loads, rmiEvents)
+    const gross = loads.reduce((sum, load) => sum + load.rate, 0)
+    const margin = loads.reduce((sum, load) => sum + (load.rate - load.marginCost), 0)
 
     return {
-      activeLoads: state.loads.length,
-      tasksDue: openTasks.length,
-      openInvoices: openInvoices.length,
-      draftInvoices: state.invoices.filter((invoice) => invoice.status === 'Draft').length,
-      revenue: state.invoices.reduce((sum, invoice) => sum + invoice.amount, 0),
-      margin: state.loads.reduce((sum, load) => sum + load.rate - load.estimatedCost, 0),
+      activeLoads: loads.filter((load) => load.stage !== 'Delivered').length,
+      atRisk: loads.filter((load) => load.risk !== 'low').length,
+      availableTrucks,
+      pendingAppointments: loads.filter((load) => !load.appointmentStatus.includes('confirmed') && load.stage !== 'Invoice pending').length,
+      unansweredEmails,
+      trackingCompliant,
+      rmi,
+      gross,
+      margin,
+      marginPct: Math.round((margin / gross) * 100),
     }
-  }, [state])
+  }, [])
 
-  function navigate(nextPage: Page) {
-    window.history.pushState({}, '', nextPage)
-    setPage(nextPage)
-  }
-
-  function addLoad(form: LoadForm) {
-    const now = new Date().toISOString()
-    const loadId = makeId('load')
-    const rate = Number(form.rate)
-    const load: Load = {
-      id: loadId,
-      loadNumber: form.loadNumber.trim(),
-      company: form.company.trim(),
-      pickupCity: form.pickupCity.trim(),
-      deliveryCity: form.deliveryCity.trim(),
-      pickupDate: form.pickupDate,
-      deliveryDate: form.deliveryDate,
-      rate,
-      estimatedCost: Number(form.estimatedCost),
-      createdAt: now,
-    }
-
-    const tasks = taskTitles.map((title, index): Task => ({
-      id: makeId('task'),
-      loadId,
-      loadNumber: load.loadNumber,
-      title,
-      dueDate: taskDueDate(title, load, index),
-      status: 'Open',
-    }))
-
-    const invoice: Invoice = {
-      id: makeId('inv'),
-      loadId,
-      loadNumber: load.loadNumber,
-      company: load.company,
-      amount: rate,
-      status: 'Draft',
-      createdAt: now,
-    }
-
-    setState((current) => ({
-      loads: [load, ...current.loads],
-      tasks: [...tasks, ...current.tasks],
-      invoices: [invoice, ...current.invoices],
-    }))
-    setLastCreated(load.loadNumber)
-    navigate('/loads')
-  }
-
-  function completeTask(taskId: string) {
-    setState((current) => ({
-      ...current,
-      tasks: current.tasks.map((task) => task.id === taskId ? { ...task, status: 'Complete' } : task),
-    }))
-  }
-
-  function updateInvoice(invoiceId: string, status: InvoiceStatus) {
-    setState((current) => ({
-      ...current,
-      invoices: current.invoices.map((invoice) => invoice.id === invoiceId ? { ...invoice, status } : invoice),
-    }))
-  }
+  const selectedOptimization = optimizeLoad(selectedLoad, metrics.availableTrucks)
 
   return (
     <div className="app-shell">
       <aside className="sidebar">
-        <button className="brand" onClick={() => navigate('/')} type="button">
-          <span className="brand-mark">FS</span>
+        <button className="brand" onClick={() => setActiveView('dashboard')} type="button">
+          <span className="brand-mark">OK</span>
           <span>
-            <strong>FreightSimple</strong>
-            <small>Manual load workflow</small>
+            <strong>OK GO Freight</strong>
+            <small>Carrier V1 org</small>
           </span>
         </button>
 
-        <nav className="nav-list" aria-label="Workflow pages">
+        <nav className="nav-list" aria-label="Carrier modules">
           {nav.map((item) => {
             const Icon = item.icon
             return (
               <button
-                className={page === item.path ? 'nav-item active' : 'nav-item'}
-                key={item.path}
-                onClick={() => navigate(item.path)}
+                className={activeView === item.id ? 'nav-item active' : 'nav-item'}
+                key={item.id}
+                onClick={() => setActiveView(item.id)}
                 type="button"
               >
                 <Icon size={17} />
@@ -245,261 +428,91 @@ function App() {
         </nav>
 
         <div className="org-card">
-          <span className="eyebrow">Local storage</span>
-          <strong>Mock data mode</strong>
-          <small>Loads, tasks, and invoices persist in this browser.</small>
+          <span className="eyebrow">New org</span>
+            <strong>{org.name}</strong>
+          <small>freightsimple.ai</small>
+          <small>{org.dot} · {org.mc}</small>
+          <div className="lane-stack">
+            {org.lanes.map((lane) => <span key={lane}>{lane}</span>)}
+          </div>
         </div>
       </aside>
 
       <main className="workspace">
         <header className="topbar">
           <div>
-            <span className="eyebrow">Manual Load to Tasks to Invoice</span>
-            <h1>{pageTitle(page)}</h1>
+            <span className="eyebrow">Carrier operations command center</span>
+            <h1>{viewTitle(activeView)}</h1>
           </div>
-          <button className="primary-action" type="button" onClick={() => navigate('/add-load')}>
-            <FilePlus2 size={16} /> Add load
-          </button>
+          <div className="top-actions">
+            <label className="search-box">
+              <Search size={16} />
+              <input aria-label="Search loads, emails, trucks" placeholder="Search loads, emails, trucks" />
+            </label>
+            <button className="primary-action" type="button">
+              <Sparkles size={16} /> AI next action
+            </button>
+          </div>
         </header>
 
-        <section className="metrics-grid" aria-label="Dashboard metrics">
-          <Metric icon={Truck} label="Active loads" value={String(metrics.activeLoads)} tone="blue" />
-          <Metric icon={ClipboardList} label="Tasks due" value={String(metrics.tasksDue)} tone="amber" />
-          <Metric icon={ReceiptText} label="Open invoices" value={String(metrics.openInvoices)} tone="red" />
-          <Metric icon={CircleDollarSign} label="Booked margin" value={money(metrics.margin)} tone="green" />
+        <section className="metrics-grid" aria-label="Carrier dashboard metrics">
+          <Metric icon={Truck} label="Active loads" value={metrics.activeLoads.toString()} tone="blue" />
+          <Metric icon={AlertTriangle} label="At-risk loads" value={metrics.atRisk.toString()} tone="red" />
+          <Metric icon={UserRoundCheck} label="Available trucks" value={metrics.availableTrucks.toString()} tone="green" />
+          <Metric icon={CalendarClock} label="Pending appointments" value={metrics.pendingAppointments.toString()} tone="amber" />
+          <Metric icon={Mail} label="Unanswered emails" value={metrics.unansweredEmails.toString()} tone="amber" />
+          <Metric icon={Radio} label="Tracking compliance" value={`${metrics.trackingCompliant}%`} tone="green" />
+          <Metric icon={ShieldCheck} label="Carrier RMI score" value={metrics.rmi.toString()} tone="blue" />
+          <Metric icon={WalletCards} label="Gross margin" value={`${metrics.marginPct}%`} tone="green" />
         </section>
 
-        {lastCreated && (
-          <div className="success-banner" role="status">
-            <CheckCircle2 size={18} />
-            Load {lastCreated} saved. Five tasks and one draft invoice were created.
-          </div>
-        )}
+        <div className="content-grid">
+          <section className="panel main-panel">
+            {activeView === 'dashboard' && (
+              <Dashboard
+                metrics={metrics}
+                selectedLoad={selectedLoad}
+                setActiveView={setActiveView}
+                setSelectedLoadId={setSelectedLoadId}
+              />
+            )}
+            {activeView === 'loads' && (
+              <LoadHub
+                availableTruckCount={metrics.availableTrucks}
+                selectedLoadId={selectedLoadId}
+                setActiveView={setActiveView}
+                setSelectedLoadId={setSelectedLoadId}
+              />
+            )}
+            {activeView === 'detail' && (
+              <LoadDetail
+                load={selectedLoad}
+                driver={selectedDriver}
+                truck={selectedTruck}
+                thread={selectedThread}
+                optimization={selectedOptimization}
+              />
+            )}
+            {activeView === 'inbox' && <OperationsInbox setActiveView={setActiveView} setSelectedLoadId={setSelectedLoadId} />}
+            {activeView === 'tracking' && <TrackingPage load={selectedLoad} driver={selectedDriver} truck={selectedTruck} />}
+            {activeView === 'rmi' && <RmiDashboard score={metrics.rmi} />}
+            {activeView === 'crm' && <CrmPage />}
+            {activeView === 'profit' && <ProfitIntelligence />}
+            {activeView === 'integrations' && <IntegrationsPage />}
+          </section>
 
-        <section className="panel main-panel">
-          {page === '/' && <Dashboard state={state} metrics={metrics} navigate={navigate} />}
-          {page === '/add-load' && <AddLoadPage onSubmit={addLoad} />}
-          {page === '/loads' && <LoadsPage loads={state.loads} />}
-          {page === '/tasks' && <TasksPage tasks={state.tasks} onComplete={completeTask} />}
-          {page === '/invoices' && <InvoicesPage invoices={state.invoices} onUpdate={updateInvoice} />}
-        </section>
+          <aside className="panel side-panel">
+            <ActionRail load={selectedLoad} optimization={selectedOptimization} rmi={metrics.rmi} />
+          </aside>
+        </div>
       </main>
     </div>
   )
 }
 
-function Dashboard({
-  state,
-  metrics,
-  navigate,
-}: {
-  state: FreightState
-  metrics: { activeLoads: number; tasksDue: number; openInvoices: number; draftInvoices: number; revenue: number; margin: number }
-  navigate: (page: Page) => void
-}) {
-  const nextTasks = state.tasks.filter((task) => task.status === 'Open').slice(0, 5)
-  const openInvoices = state.invoices.filter((invoice) => invoice.status !== 'Paid').slice(0, 5)
-
-  return (
-    <>
-      <PanelHeader
-        icon={Gauge}
-        title="Dashboard"
-        copy="A practical dispatch view of active loads, due tasks, and invoices that still need attention."
-      />
-      <div className="dashboard-layout">
-        <MiniPanel title="Current workflow" icon={PackageCheck}>
-          <div className="workflow-strip">
-            <button type="button" onClick={() => navigate('/add-load')}>Manual load</button>
-            <span>creates</span>
-            <button type="button" onClick={() => navigate('/tasks')}>5 tasks</button>
-            <span>and</span>
-            <button type="button" onClick={() => navigate('/invoices')}>Draft invoice</button>
-          </div>
-        </MiniPanel>
-
-        <div className="split-panels">
-          <MiniPanel title="Tasks due" icon={ClipboardList}>
-            {nextTasks.length ? nextTasks.map((task) => <TaskLine task={task} key={task.id} />) : <EmptyState text="No open tasks." />}
-          </MiniPanel>
-          <MiniPanel title="Open invoices" icon={ReceiptText}>
-            {openInvoices.length ? openInvoices.map((invoice) => (
-              <div className="status-row" key={invoice.id}>
-                <span>{invoice.loadNumber}</span>
-                <strong>{invoice.status} · {money(invoice.amount)}</strong>
-              </div>
-            )) : <EmptyState text="No open invoices." />}
-          </MiniPanel>
-        </div>
-
-        <MiniPanel title="Totals" icon={CircleDollarSign}>
-          <div className="summary-grid">
-            <Summary label="Loads" value={String(metrics.activeLoads)} />
-            <Summary label="Draft invoices" value={String(metrics.draftInvoices)} />
-            <Summary label="Invoice value" value={money(metrics.revenue)} />
-            <Summary label="Estimated margin" value={money(metrics.margin)} />
-          </div>
-        </MiniPanel>
-      </div>
-    </>
-  )
-}
-
-function AddLoadPage({ onSubmit }: { onSubmit: (form: LoadForm) => void }) {
-  const [form, setForm] = useState<LoadForm>(emptyForm)
-
-  function update(field: keyof LoadForm, value: string) {
-    setForm((current) => ({ ...current, [field]: value }))
-  }
-
-  function submit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault()
-    onSubmit(form)
-    setForm(emptyForm)
-  }
-
-  return (
-    <>
-      <PanelHeader
-        icon={FilePlus2}
-        title="Add manual load"
-        copy="Submit once to save the load, create the operational task list, and open a draft invoice for the load rate."
-      />
-      <form className="load-form" onSubmit={submit}>
-        <Field label="Load number" value={form.loadNumber} onChange={(value) => update('loadNumber', value)} required />
-        <Field label="Company" value={form.company} onChange={(value) => update('company', value)} required />
-        <Field label="Pickup city" value={form.pickupCity} onChange={(value) => update('pickupCity', value)} required />
-        <Field label="Delivery city" value={form.deliveryCity} onChange={(value) => update('deliveryCity', value)} required />
-        <Field label="Pickup date" type="date" value={form.pickupDate} onChange={(value) => update('pickupDate', value)} required />
-        <Field label="Delivery date" type="date" value={form.deliveryDate} onChange={(value) => update('deliveryDate', value)} required />
-        <Field label="Rate" type="number" min="0" step="0.01" value={form.rate} onChange={(value) => update('rate', value)} required />
-        <Field label="Estimated cost" type="number" min="0" step="0.01" value={form.estimatedCost} onChange={(value) => update('estimatedCost', value)} required />
-        <div className="form-actions">
-          <button className="primary-action" type="submit">
-            <Send size={16} /> Save load
-          </button>
-        </div>
-      </form>
-    </>
-  )
-}
-
-function LoadsPage({ loads }: { loads: Load[] }) {
-  return (
-    <>
-      <PanelHeader icon={Truck} title="Loads" copy="Every manual load saved in local storage." />
-      <div className="table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th>Load</th>
-              <th>Company</th>
-              <th>Lane</th>
-              <th>Dates</th>
-              <th>Rate</th>
-              <th>Est. cost</th>
-              <th>Margin</th>
-            </tr>
-          </thead>
-          <tbody>
-            {loads.map((load) => (
-              <tr key={load.id}>
-                <td><strong>{load.loadNumber}</strong></td>
-                <td>{load.company}</td>
-                <td>
-                  <strong>{load.pickupCity}</strong>
-                  <small>{load.deliveryCity}</small>
-                </td>
-                <td>
-                  <strong>{formatDate(load.pickupDate)}</strong>
-                  <small>{formatDate(load.deliveryDate)}</small>
-                </td>
-                <td>{money(load.rate)}</td>
-                <td>{money(load.estimatedCost)}</td>
-                <td>{money(load.rate - load.estimatedCost)}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </>
-  )
-}
-
-function TasksPage({ tasks, onComplete }: { tasks: Task[]; onComplete: (id: string) => void }) {
-  return (
-    <>
-      <PanelHeader icon={ClipboardList} title="Tasks" copy="Auto-created tasks for each manual load. Complete them as dispatch work moves forward." />
-      <div className="list-stack">
-        {tasks.map((task) => (
-          <article className="work-item" key={task.id}>
-            <div>
-              <Chip tone={task.status === 'Complete' ? 'green' : 'amber'}>{task.status}</Chip>
-              <strong>{task.title}</strong>
-              <small>{task.loadNumber} · Due {formatDate(task.dueDate)}</small>
-            </div>
-            <button disabled={task.status === 'Complete'} onClick={() => onComplete(task.id)} type="button">
-              <CheckCircle2 size={16} /> Mark complete
-            </button>
-          </article>
-        ))}
-      </div>
-    </>
-  )
-}
-
-function InvoicesPage({
-  invoices,
-  onUpdate,
-}: {
-  invoices: Invoice[]
-  onUpdate: (id: string, status: InvoiceStatus) => void
-}) {
-  return (
-    <>
-      <PanelHeader icon={ReceiptText} title="Invoices" copy="Each submitted load starts as a Draft invoice with amount equal to the load rate." />
-      <div className="list-stack">
-        {invoices.map((invoice) => (
-          <article className="work-item" key={invoice.id}>
-            <div>
-              <Chip tone={invoice.status === 'Paid' ? 'green' : invoice.status === 'Sent' ? 'blue' : 'gray'}>{invoice.status}</Chip>
-              <strong>{invoice.loadNumber} · {invoice.company}</strong>
-              <small>{money(invoice.amount)} · Created {formatDate(invoice.createdAt)}</small>
-            </div>
-            <div className="button-cluster">
-              <button disabled={invoice.status !== 'Draft'} onClick={() => onUpdate(invoice.id, 'Sent')} type="button">Mark sent</button>
-              <button disabled={invoice.status === 'Paid'} onClick={() => onUpdate(invoice.id, 'Paid')} type="button">Mark paid</button>
-            </div>
-          </article>
-        ))}
-      </div>
-    </>
-  )
-}
-
-function Field({
-  label,
-  value,
-  onChange,
-  type = 'text',
-  required = false,
-  min,
-  step,
-}: {
-  label: string
-  value: string
-  onChange: (value: string) => void
-  type?: string
-  required?: boolean
-  min?: string
-  step?: string
-}) {
-  return (
-    <label className="field">
-      <span>{label}</span>
-      <input min={min} onChange={(event) => onChange(event.target.value)} required={required} step={step} type={type} value={value} />
-    </label>
-  )
+function viewTitle(activeView: string) {
+  const item = nav.find((entry) => entry.id === activeView)
+  return item?.label ?? 'Dashboard'
 }
 
 function Metric({ icon: Icon, label, value, tone }: { icon: typeof Truck; label: string; value: string; tone: string }) {
@@ -514,9 +527,481 @@ function Metric({ icon: Icon, label, value, tone }: { icon: typeof Truck; label:
   )
 }
 
-function PanelHeader({ icon: Icon, title, copy }: { icon: typeof Truck; title: string; copy: string }) {
+function Dashboard({
+  metrics,
+  selectedLoad,
+  setActiveView,
+  setSelectedLoadId,
+}: {
+  metrics: ReturnType<typeof AppMetrics>
+  selectedLoad: Load
+  setActiveView: (view: string) => void
+  setSelectedLoadId: (id: string) => void
+}) {
+  const availableTruckCount = trucks.filter((truck) => truck.status === 'available').length
+
   return (
-    <div className="panel-header">
+    <>
+      <PanelHeader
+        icon={Activity}
+        title="Carrier Dashboard"
+        copy="One operating surface for dispatch, inbox, appointments, tracking, RMI, CRM, and margin."
+      />
+      <div className="dashboard-layout">
+        <div className="stack">
+          <LoadTable
+            loads={loads}
+            availableTruckCount={availableTruckCount}
+            selectedLoadId={selectedLoad.id}
+            onSelect={(id) => {
+              setSelectedLoadId(id)
+              setActiveView('detail')
+            }}
+          />
+          <div className="split-panels">
+            <MiniPanel title="Operations Inbox" icon={Inbox}>
+              {threads.slice(0, 3).map((thread) => (
+                <button className="thread-row" key={thread.id} type="button" onClick={() => {
+                  if (thread.loadId) setSelectedLoadId(thread.loadId)
+                  setActiveView('inbox')
+                }}>
+                  <span>{thread.subject}</span>
+                  <small>{thread.age} · {thread.from}</small>
+                </button>
+              ))}
+            </MiniPanel>
+            <MiniPanel title="RMI drivers" icon={ShieldCheck}>
+              {rmiEvents.map((event) => (
+                <div className="score-row" key={`${event.loadId}-${event.event}`}>
+                  <span>{event.event}</span>
+                  <strong className={event.impact > 0 ? 'positive' : 'negative'}>{event.impact > 0 ? '+' : ''}{event.impact}</strong>
+                </div>
+              ))}
+            </MiniPanel>
+          </div>
+        </div>
+
+        <div className="stack">
+          <MiniPanel title="Tracking watch" icon={MapPinned}>
+            <div className="map-surface">
+              <span className="map-dot dot-one" />
+              <span className="map-dot dot-two" />
+              <span className="map-dot dot-three" />
+              <div>
+                <strong>{selectedLoad.id}</strong>
+                <small>{selectedLoad.pickup} to {selectedLoad.delivery}</small>
+              </div>
+            </div>
+            {gpsPings.slice(0, 3).map((ping) => (
+              <div className="ping-row" key={`${ping.time}-${ping.location}`}>
+                <span>{ping.time}</span>
+                <strong>{ping.location}</strong>
+                <small>{ping.source}</small>
+              </div>
+            ))}
+          </MiniPanel>
+          <MiniPanel title="Profit pulse" icon={CircleDollarSign}>
+            <div className="profit-number">{money(metrics.margin)}</div>
+            <p className="muted">{metrics.marginPct}% booked margin across {loads.length} active V1 loads.</p>
+            <div className="bar-list">
+              {loads.map((load) => {
+                const margin = load.rate - load.marginCost
+                return (
+                  <div className="bar-row" key={load.id}>
+                    <span>{load.id}</span>
+                    <div><i style={{ width: `${Math.min(100, (margin / 1300) * 100)}%` }} /></div>
+                    <strong>{money(margin)}</strong>
+                  </div>
+                )
+              })}
+            </div>
+          </MiniPanel>
+        </div>
+      </div>
+    </>
+  )
+}
+
+function AppMetrics() {
+  return {
+    activeLoads: 0,
+    atRisk: 0,
+    availableTrucks: 0,
+    pendingAppointments: 0,
+    unansweredEmails: 0,
+    trackingCompliant: 0,
+    rmi: 0,
+    gross: 0,
+    margin: 0,
+    marginPct: 0,
+  }
+}
+
+function LoadHub({
+  availableTruckCount,
+  selectedLoadId,
+  setActiveView,
+  setSelectedLoadId,
+}: {
+  availableTruckCount: number
+  selectedLoadId: string
+  setActiveView: (view: string) => void
+  setSelectedLoadId: (id: string) => void
+}) {
+  return (
+    <>
+      <PanelHeader
+        icon={ClipboardList}
+        title="Load Board / Load Hub"
+        copy="DAT, Truckstop, email confirmations, and manual loads normalized into one ranked worklist."
+      />
+      <div className="filters">
+        {['All loads', 'DAT', 'Truckstop', 'Email confirmations', 'Manual entry'].map((filter) => (
+          <button className={filter === 'All loads' ? 'filter active' : 'filter'} key={filter} type="button">{filter}</button>
+        ))}
+      </div>
+      <LoadTable
+        loads={loads}
+        availableTruckCount={availableTruckCount}
+        selectedLoadId={selectedLoadId}
+        onSelect={(id) => {
+          setSelectedLoadId(id)
+          setActiveView('detail')
+        }}
+      />
+    </>
+  )
+}
+
+function LoadTable({
+  loads: allLoads,
+  availableTruckCount,
+  selectedLoadId,
+  onSelect,
+}: {
+  loads: Load[]
+  availableTruckCount: number
+  selectedLoadId: string
+  onSelect: (id: string) => void
+}) {
+  return (
+    <div className="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Load</th>
+            <th>Source</th>
+            <th>Lane</th>
+            <th>Rate</th>
+            <th>Equipment</th>
+            <th>Optimizer</th>
+            <th>Recommended action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {allLoads.map((load) => {
+            const score = optimizeLoad(load, availableTruckCount)
+            return (
+              <tr className={selectedLoadId === load.id ? 'selected' : ''} key={load.id} onClick={() => onSelect(load.id)}>
+                <td>
+                  <button className="load-link" type="button">
+                    <strong>{load.id}</strong>
+                    <small>{load.customer}</small>
+                  </button>
+                </td>
+                <td><Chip tone={sourceTone(load.source)}>{load.source}</Chip></td>
+                <td>
+                  <strong>{load.pickup}</strong>
+                  <small>{load.delivery}</small>
+                </td>
+                <td>
+                  <strong>{money(load.rate)}</strong>
+                  <small>{score.rpm.toFixed(2)}/mi</small>
+                </td>
+                <td>{load.equipment}</td>
+                <td><ScoreMeter value={score.score} /></td>
+                <td>{score.recommendedAction}</td>
+              </tr>
+            )
+          })}
+        </tbody>
+      </table>
+    </div>
+  )
+}
+
+function LoadDetail({
+  load,
+  driver,
+  truck,
+  thread,
+  optimization,
+}: {
+  load: Load
+  driver?: Driver
+  truck?: TruckAsset
+  thread?: EmailThread
+  optimization: ReturnType<typeof optimizeLoad>
+}) {
+  return (
+    <>
+      <PanelHeader icon={Route} title={`Load Detail · ${load.id}`} copy="Pickup, delivery, contacts, appointments, tracking, documents, invoice, and next action." />
+      <div className="detail-grid">
+        <InfoBlock title="Pickup" value={load.pickup} detail={load.pickupWindow} icon={PackageCheck} />
+        <InfoBlock title="Delivery" value={load.delivery} detail={load.deliveryWindow} icon={MapPinned} />
+        <InfoBlock title="Rate / miles" value={`${money(load.rate)} · ${load.miles} mi`} detail={`${optimization.rpm.toFixed(2)}/mi · ${money(optimization.margin)} margin`} icon={CircleDollarSign} />
+        <InfoBlock title="Equipment" value={load.equipment} detail={`${truck?.unit ?? 'Unassigned'} · ${driver?.name ?? 'No driver'}`} icon={Truck} />
+      </div>
+      <div className="split-panels">
+        <MiniPanel title="Contacts" icon={UsersRound}>
+          {load.contacts.map((contact) => <div className="contact-row" key={contact}>{contact}</div>)}
+          <div className="contact-row">{load.broker}</div>
+        </MiniPanel>
+        <MiniPanel title="Statuses" icon={CheckCircle2}>
+          <StatusRow label="Appointment" value={load.appointmentStatus} />
+          <StatusRow label="Tracking" value={load.trackingStatus} />
+          <StatusRow label="POD" value={load.podStatus} />
+          <StatusRow label="Invoice" value={load.invoiceStatus} />
+        </MiniPanel>
+      </div>
+      <MiniPanel title="Email thread and AI next action" icon={Bot}>
+        <div className="email-card">
+          <strong>{thread?.subject}</strong>
+          <p>{thread?.preview}</p>
+          <div className="ai-reply">
+            <Sparkles size={16} />
+            <span>{thread?.suggestedReply}</span>
+          </div>
+        </div>
+      </MiniPanel>
+    </>
+  )
+}
+
+function OperationsInbox({
+  setActiveView,
+  setSelectedLoadId,
+}: {
+  setActiveView: (view: string) => void
+  setSelectedLoadId: (id: string) => void
+}) {
+  const actions = ['Confirm pickup', 'Request appointment', 'Send ETA', 'Request POD', 'Invoice follow-up']
+
+  return (
+    <>
+      <PanelHeader icon={Inbox} title="Operations Inbox" copy="Inbound load emails with AI suggested replies and dispatcher action buttons." />
+      <div className="inbox-list">
+        {threads.map((thread) => (
+          <article className="inbox-item" key={thread.id}>
+            <button type="button" onClick={() => {
+              if (thread.loadId) setSelectedLoadId(thread.loadId)
+              setActiveView('detail')
+            }}>
+              <span>{thread.age}</span>
+              <strong>{thread.subject}</strong>
+              <small>{thread.from}</small>
+              <p>{thread.preview}</p>
+            </button>
+            <div className="ai-reply">
+              <MessageSquareReply size={16} />
+              <span>{thread.suggestedReply}</span>
+            </div>
+            <div className="action-row">
+              {actions.map((action) => <button type="button" key={action}>{action}</button>)}
+            </div>
+          </article>
+        ))}
+      </div>
+    </>
+  )
+}
+
+function TrackingPage({ load, driver, truck }: { load: Load; driver?: Driver; truck?: TruckAsset }) {
+  return (
+    <>
+      <PanelHeader icon={MapPinned} title="Tracking" copy="Truck/load location, ping history, provider status, and ETA risk." />
+      <div className="tracking-layout">
+        <div className="map-large">
+          <span className="route-line" />
+          <span className="map-dot dot-one" />
+          <span className="map-dot dot-two" />
+          <span className="map-dot dot-three" />
+          <div className="map-callout">
+            <strong>{truck?.unit ?? 'Unassigned'} · {load.id}</strong>
+            <small>{truck?.location ?? 'Location pending'} · ETA risk {load.risk}</small>
+          </div>
+        </div>
+        <div className="stack">
+          <MiniPanel title="Provider status" icon={Cloud}>
+            <StatusRow label="ELD" value={`${driver?.eldProvider ?? 'Manual'} active shell`} />
+            <StatusRow label="MacroPoint" value={load.trackingStatus.includes('MacroPoint') ? 'Invite pending' : 'Monitoring shell'} />
+            <StatusRow label="FourKites" value={load.trackingStatus.includes('FourKites') ? 'Pending acceptance' : 'Adapter ready'} />
+            <StatusRow label="ETA risk" value={load.risk.toUpperCase()} />
+          </MiniPanel>
+          <MiniPanel title="GPS ping history" icon={Radio}>
+            {gpsPings.map((ping) => (
+              <div className="ping-row" key={`${ping.time}-${ping.location}`}>
+                <span>{ping.time}</span>
+                <strong>{ping.location}</strong>
+                <small>{ping.speed} mph · {ping.source}</small>
+              </div>
+            ))}
+          </MiniPanel>
+        </div>
+      </div>
+    </>
+  )
+}
+
+function RmiDashboard({ score }: { score: number }) {
+  return (
+    <>
+      <PanelHeader icon={ShieldCheck} title="RMI Dashboard" copy="Carrier score, score drivers, load history, and recommendations to improve reputation." />
+      <div className="rmi-grid">
+        <div className="rmi-score">
+          <span>Carrier score</span>
+          <strong>{score}</strong>
+          <small>V1 mock scoring model</small>
+        </div>
+        <MiniPanel title="Score drivers" icon={BarChart3}>
+          <StatusRow label="On-time appointments" value="+6" />
+          <StatusRow label="Tracking gaps" value="-4" />
+          <StatusRow label="Document exceptions" value="-3" />
+          <StatusRow label="Fast replies" value="+2" />
+        </MiniPanel>
+      </div>
+      <MiniPanel title="Load-by-load performance history" icon={ClipboardList}>
+        {rmiEvents.map((event) => (
+          <div className="score-row" key={`${event.loadId}-${event.event}`}>
+            <span>{event.loadId} · {event.event}</span>
+            <strong className={event.impact > 0 ? 'positive' : 'negative'}>{event.impact > 0 ? '+' : ''}{event.impact}</strong>
+          </div>
+        ))}
+      </MiniPanel>
+      <MiniPanel title="Suggestions to improve score" icon={Sparkles}>
+        <ul className="suggestions">
+          <li>Auto-send tracking invite when a load moves to booked.</li>
+          <li>Escalate unconfirmed appointments after 20 minutes.</li>
+          <li>Require POD photo quality check before invoice submission.</li>
+        </ul>
+      </MiniPanel>
+    </>
+  )
+}
+
+function CrmPage() {
+  return (
+    <>
+      <PanelHeader icon={UsersRound} title="CRM" copy="Carrier-side account management for shippers, brokers, follow-ups, and lane opportunities." />
+      <div className="crm-grid">
+        {crmAccounts.map((account) => (
+          <article className="account-card" key={account.id}>
+            <Chip tone={account.health === 'strong' ? 'green' : account.health === 'watch' ? 'red' : 'blue'}>{account.health}</Chip>
+            <strong>{account.name}</strong>
+            <small>Owner {account.owner} · Last touch {account.lastTouch}</small>
+            <div className="account-meta">
+              <span>{account.pipeline}</span>
+              <span>{account.openLoads} open loads</span>
+            </div>
+            <button type="button">Schedule follow-up <ChevronRight size={15} /></button>
+          </article>
+        ))}
+      </div>
+    </>
+  )
+}
+
+function ProfitIntelligence() {
+  const availableTruckCount = trucks.filter((truck) => truck.status === 'available').length
+  const rankedLoads = [...loads].sort((a, b) => optimizeLoad(b, availableTruckCount).margin - optimizeLoad(a, availableTruckCount).margin)
+
+  return (
+    <>
+      <PanelHeader icon={CircleDollarSign} title="Profit Intelligence" copy="Margin, RPM, deadhead risk, and recommended booking decisions for carrier profitability." />
+      <div className="profit-grid">
+        {rankedLoads.map((load) => {
+          const score = optimizeLoad(load, availableTruckCount)
+          return (
+            <article className="profit-card" key={load.id}>
+              <div>
+                <strong>{load.id}</strong>
+                <small>{load.pickup} to {load.delivery}</small>
+              </div>
+              <ScoreMeter value={score.score} />
+              <StatusRow label="Revenue" value={money(load.rate)} />
+              <StatusRow label="Est. cost" value={money(load.marginCost)} />
+              <StatusRow label="Gross margin" value={money(score.margin)} />
+              <StatusRow label="Decision" value={score.recommendedAction} />
+            </article>
+          )
+        })}
+      </div>
+    </>
+  )
+}
+
+function IntegrationsPage() {
+  return (
+    <>
+      <PanelHeader icon={PlugZap} title="Integrations" copy="Provider adapter shells with mock connection status. V1 does not require real API credentials." />
+      <div className="integration-grid">
+        {connectedAccounts.map((account) => (
+          <article className="connector-card" key={account.id}>
+            <div className="connector-head">
+              <span className="connector-icon"><Link2 size={18} /></span>
+              <Chip tone={statusTone(account.status)}>{statusLabel(account.status)}</Chip>
+            </div>
+            <strong>{account.provider}</strong>
+            <small>{account.category} · {account.sync}</small>
+            <p>{account.notes}</p>
+          </article>
+        ))}
+      </div>
+    </>
+  )
+}
+
+function ActionRail({ load, optimization, rmi }: { load: Load; optimization: ReturnType<typeof optimizeLoad>; rmi: number }) {
+  return (
+    <>
+      <PanelHeader icon={Bot} title="AI Dispatch Rail" copy="Selected load recommendation and exception queue." compact />
+      <div className="rail-card accent">
+        <span className="eyebrow">Next action</span>
+        <strong>{optimization.recommendedAction}</strong>
+        <p>{load.id} has optimizer score {optimization.score}, RMI score {rmi}, and {load.risk} ETA risk.</p>
+        <button type="button"><Send size={15} /> Send dispatcher update</button>
+      </div>
+      <MiniPanel title="Selected load" icon={Route}>
+        <StatusRow label="Lane" value={`${load.pickup} → ${load.delivery}`} />
+        <StatusRow label="Appointment" value={load.appointmentStatus} />
+        <StatusRow label="Tracking" value={load.trackingStatus} />
+        <StatusRow label="Invoice" value={load.invoiceStatus} />
+      </MiniPanel>
+      <MiniPanel title="Org adapters" icon={PlugZap}>
+        {connectedAccounts.slice(0, 5).map((account) => (
+          <div className="score-row" key={account.id}>
+            <span>{account.provider}</span>
+            <Chip tone={statusTone(account.status)}>{statusLabel(account.status)}</Chip>
+          </div>
+        ))}
+      </MiniPanel>
+    </>
+  )
+}
+
+function PanelHeader({
+  icon: Icon,
+  title,
+  copy,
+  compact = false,
+}: {
+  icon: typeof Truck
+  title: string
+  copy: string
+  compact?: boolean
+}) {
+  return (
+    <div className={compact ? 'panel-header compact' : 'panel-header'}>
       <span><Icon size={18} /></span>
       <div>
         <h2>{title}</h2>
@@ -535,75 +1020,51 @@ function MiniPanel({ title, icon: Icon, children }: { title: string; icon: typeo
   )
 }
 
-function TaskLine({ task }: { task: Task }) {
+function InfoBlock({ title, value, detail, icon: Icon }: { title: string; value: string; detail: string; icon: typeof Truck }) {
   return (
-    <div className="status-row">
-      <span>{task.loadNumber}</span>
-      <strong>{task.title} · {formatDate(task.dueDate)}</strong>
-    </div>
+    <article className="info-block">
+      <Icon size={18} />
+      <span>{title}</span>
+      <strong>{value}</strong>
+      <small>{detail}</small>
+    </article>
   )
 }
 
-function Summary({ label, value }: { label: string; value: string }) {
+function StatusRow({ label, value }: { label: string; value: string }) {
   return (
-    <div className="summary-card">
+    <div className="status-row">
       <span>{label}</span>
       <strong>{value}</strong>
     </div>
   )
 }
 
-function EmptyState({ text }: { text: string }) {
-  return <p className="muted">{text}</p>
+function ScoreMeter({ value }: { value: number }) {
+  return (
+    <div className="score-meter" aria-label={`Optimizer score ${value}`}>
+      <span><i style={{ width: `${value}%` }} /></span>
+      <strong>{value}</strong>
+    </div>
+  )
 }
 
 function Chip({ tone, children }: { tone: string; children: React.ReactNode }) {
   return <span className={`chip chip-${tone}`}>{children}</span>
 }
 
-function readState(): FreightState {
-  try {
-    const stored = window.localStorage.getItem(storageKey)
-    if (!stored) return starterState
-    const parsed = JSON.parse(stored) as FreightState
-    if (!Array.isArray(parsed.loads) || !Array.isArray(parsed.tasks) || !Array.isArray(parsed.invoices)) {
-      return starterState
-    }
-    return parsed
-  } catch {
-    return starterState
-  }
+function sourceTone(source: LoadSource) {
+  if (source === 'DAT') return 'blue'
+  if (source === 'Truckstop') return 'amber'
+  if (source === 'Email') return 'green'
+  return 'gray'
 }
 
-function normalizePath(pathname: string): Page {
-  if (pathname === '/add-load' || pathname === '/loads' || pathname === '/tasks' || pathname === '/invoices') return pathname
-  return '/'
-}
-
-function pageTitle(page: Page) {
-  return nav.find((item) => item.path === page)?.label ?? 'Dashboard'
-}
-
-function makeId(prefix: string) {
-  return `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2)}`
-}
-
-function taskDueDate(title: string, load: Load, index: number) {
-  if (title === 'Confirm pickup') return load.pickupDate
-  if (title === 'Deliver load' || title === 'Request POD' || title === 'Send invoice') return load.deliveryDate
-  const followUp = new Date(`${load.deliveryDate}T12:00:00`)
-  followUp.setDate(followUp.getDate() + 7 + index)
-  return followUp.toISOString().slice(0, 10)
-}
-
-function money(value: number) {
-  return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(value || 0)
-}
-
-function formatDate(value: string) {
-  if (!value) return 'Not set'
-  const date = new Date(value.includes('T') ? value : `${value}T12:00:00`)
-  return new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).format(date)
+function statusTone(status: Status) {
+  if (status === 'connected') return 'green'
+  if (status === 'degraded') return 'red'
+  if (status === 'mocked') return 'blue'
+  return 'gray'
 }
 
 export default App
