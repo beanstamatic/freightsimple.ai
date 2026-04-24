@@ -1017,7 +1017,24 @@ input:focus-visible {
   .profit-card,
   .info-block,
   .inbox-item,
-  .rail-card {
+  .rail-card,
+  .work-item {
     padding: 12px;
+  }
+
+  .load-form,
+  .work-item {
+    grid-template-columns: 1fr;
+  }
+
+  .load-form,
+  .work-item {
+    display: grid;
+  }
+
+  .button-cluster,
+  .work-item button {
+    justify-content: stretch;
+    width: 100%;
   }
 }

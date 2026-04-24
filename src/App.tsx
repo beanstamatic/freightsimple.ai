@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from 'react'
 import type { FormEvent } from 'react'
 import {
   Activity,
-  AlertTriangle,
   BarChart3,
   Bot,
   CalendarClock,
@@ -27,7 +26,6 @@ import {
   ShieldCheck,
   Sparkles,
   Truck,
-  UserRoundCheck,
   UsersRound,
   WalletCards,
   ReceiptText,
