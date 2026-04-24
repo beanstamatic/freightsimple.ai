@@ -1,0 +1,304 @@
+- generic [ref=e3]:
+  - complementary [ref=e4]:
+    - button "OK OK GO Freight Carrier V1 org" [ref=e5] [cursor=pointer]:
+      - generic [ref=e6]: OK
+      - generic [ref=e7]:
+        - strong [ref=e8]: OK GO Freight
+        - generic [ref=e9]: Carrier V1 org
+    - navigation "Carrier modules" [ref=e10]:
+      - button "Dashboard" [ref=e11] [cursor=pointer]:
+        - img [ref=e12]
+        - text: Dashboard
+      - button "Load Hub" [ref=e15] [cursor=pointer]:
+        - img [ref=e16]
+        - text: Load Hub
+      - button "Load Detail" [ref=e19] [cursor=pointer]:
+        - img [ref=e20]
+        - text: Load Detail
+      - button "Operations Inbox" [ref=e24] [cursor=pointer]:
+        - img [ref=e25]
+        - text: Operations Inbox
+      - button "Tracking" [ref=e28] [cursor=pointer]:
+        - img [ref=e29]
+        - text: Tracking
+      - button "RMI" [ref=e33] [cursor=pointer]:
+        - img [ref=e34]
+        - text: RMI
+      - button "CRM" [ref=e37] [cursor=pointer]:
+        - img [ref=e38]
+        - text: CRM
+      - button "Profit Intel" [ref=e42] [cursor=pointer]:
+        - img [ref=e43]
+        - text: Profit Intel
+      - button "Integrations" [ref=e46] [cursor=pointer]:
+        - img [ref=e47]
+        - text: Integrations
+    - generic [ref=e53]:
+      - generic [ref=e54]: New org
+      - strong [ref=e55]: OK GO Freight — Carrier V1
+      - generic [ref=e56]: freightsimple.ai
+      - generic [ref=e57]: DOT 3849217 · MC 1459082
+      - generic [ref=e58]:
+        - generic [ref=e59]: SLC <> Phoenix
+        - generic [ref=e60]: Denver <> Dallas
+        - generic [ref=e61]: Boise <> Seattle
+  - main [ref=e62]:
+    - generic [ref=e63]:
+      - generic [ref=e64]:
+        - generic [ref=e65]: Carrier operations command center
+        - heading "Dashboard" [level=1] [ref=e66]
+      - generic [ref=e67]:
+        - generic [ref=e68]:
+          - img [ref=e69]
+          - textbox "Search loads, emails, trucks" [ref=e72]
+        - button "AI next action" [ref=e73] [cursor=pointer]:
+          - img [ref=e74]
+          - text: AI next action
+    - region "Carrier dashboard metrics" [ref=e77]:
+      - article [ref=e78]:
+        - generic [ref=e79]:
+          - generic [ref=e80]: Active loads
+          - strong [ref=e81]: "4"
+        - img [ref=e82]
+      - article [ref=e87]:
+        - generic [ref=e88]:
+          - generic [ref=e89]: At-risk loads
+          - strong [ref=e90]: "3"
+        - img [ref=e91]
+      - article [ref=e93]:
+        - generic [ref=e94]:
+          - generic [ref=e95]: Available trucks
+          - strong [ref=e96]: "2"
+        - img [ref=e97]
+      - article [ref=e101]:
+        - generic [ref=e102]:
+          - generic [ref=e103]: Pending appointments
+          - strong [ref=e104]: "1"
+        - img [ref=e105]
+      - article [ref=e109]:
+        - generic [ref=e110]:
+          - generic [ref=e111]: Unanswered emails
+          - strong [ref=e112]: "4"
+        - img [ref=e113]
+      - article [ref=e116]:
+        - generic [ref=e117]:
+          - generic [ref=e118]: Tracking compliance
+          - strong [ref=e119]: 75%
+        - img [ref=e120]
+      - article [ref=e126]:
+        - generic [ref=e127]:
+          - generic [ref=e128]: Carrier RMI score
+          - strong [ref=e129]: "85"
+        - img [ref=e130]
+      - article [ref=e133]:
+        - generic [ref=e134]:
+          - generic [ref=e135]: Gross margin
+          - strong [ref=e136]: 34%
+        - img [ref=e137]
+    - generic [ref=e141]:
+      - generic [ref=e142]:
+        - generic [ref=e143]:
+          - img [ref=e145]
+          - generic [ref=e147]:
+            - heading "Carrier Dashboard" [level=2] [ref=e148]
+            - paragraph [ref=e149]: One operating surface for dispatch, inbox, appointments, tracking, RMI, CRM, and margin.
+        - generic [ref=e150]:
+          - generic [ref=e151]:
+            - table [ref=e153]:
+              - rowgroup [ref=e154]:
+                - row "Load Source Lane Rate Equipment Optimizer Recommended action" [ref=e155]:
+                  - columnheader "Load" [ref=e156]
+                  - columnheader "Source" [ref=e157]
+                  - columnheader "Lane" [ref=e158]
+                  - columnheader "Rate" [ref=e159]
+                  - columnheader "Equipment" [ref=e160]
+                  - columnheader "Optimizer" [ref=e161]
+                  - columnheader "Recommended action" [ref=e162]
+              - rowgroup [ref=e163]:
+                - row "OKG-1048 Summit Retail Group DAT Salt Lake City, UT Phoenix, AZ $2,850 4.30/mi 53 Van Optimizer score 61 Hold until capacity improves" [ref=e164] [cursor=pointer]:
+                  - cell "OKG-1048 Summit Retail Group" [ref=e165]:
+                    - button "OKG-1048 Summit Retail Group" [ref=e166]:
+                      - strong [ref=e167]: OKG-1048
+                      - generic [ref=e168]: Summit Retail Group
+                  - cell "DAT" [ref=e169]:
+                    - generic [ref=e170]: DAT
+                  - cell "Salt Lake City, UT Phoenix, AZ" [ref=e171]:
+                    - strong [ref=e172]: Salt Lake City, UT
+                    - generic [ref=e173]: Phoenix, AZ
+                  - cell "$2,850 4.30/mi" [ref=e174]:
+                    - strong [ref=e175]: $2,850
+                    - generic [ref=e176]: 4.30/mi
+                  - cell "53 Van" [ref=e177]
+                  - cell "Optimizer score 61" [ref=e178]:
+                    - generic "Optimizer score 61" [ref=e179]:
+                      - strong [ref=e182]: "61"
+                  - cell "Hold until capacity improves" [ref=e183]
+                - row "OKG-1051 Cascade Foods Truckstop Denver, CO Dallas, TX $3,650 4.60/mi Reefer Optimizer score 46 Hold until capacity improves" [ref=e184] [cursor=pointer]:
+                  - cell "OKG-1051 Cascade Foods" [ref=e185]:
+                    - button "OKG-1051 Cascade Foods" [ref=e186]:
+                      - strong [ref=e187]: OKG-1051
+                      - generic [ref=e188]: Cascade Foods
+                  - cell "Truckstop" [ref=e189]:
+                    - generic [ref=e190]: Truckstop
+                  - cell "Denver, CO Dallas, TX" [ref=e191]:
+                    - strong [ref=e192]: Denver, CO
+                    - generic [ref=e193]: Dallas, TX
+                  - cell "$3,650 4.60/mi" [ref=e194]:
+                    - strong [ref=e195]: $3,650
+                    - generic [ref=e196]: 4.60/mi
+                  - cell "Reefer" [ref=e197]
+                  - cell "Optimizer score 46" [ref=e198]:
+                    - generic "Optimizer score 46" [ref=e199]:
+                      - strong [ref=e202]: "46"
+                  - cell "Hold until capacity improves" [ref=e203]
+                - row "OKG-1054 Wasatch Building Supply Email Boise, ID Seattle, WA $3,100 6.15/mi Flatbed Optimizer score 90 Accept and dispatch" [ref=e204] [cursor=pointer]:
+                  - cell "OKG-1054 Wasatch Building Supply" [ref=e205]:
+                    - button "OKG-1054 Wasatch Building Supply" [ref=e206]:
+                      - strong [ref=e207]: OKG-1054
+                      - generic [ref=e208]: Wasatch Building Supply
+                  - cell "Email" [ref=e209]:
+                    - generic [ref=e210]: Email
+                  - cell "Boise, ID Seattle, WA" [ref=e211]:
+                    - strong [ref=e212]: Boise, ID
+                    - generic [ref=e213]: Seattle, WA
+                  - cell "$3,100 6.15/mi" [ref=e214]:
+                    - strong [ref=e215]: $3,100
+                    - generic [ref=e216]: 6.15/mi
+                  - cell "Flatbed" [ref=e217]
+                  - cell "Optimizer score 90" [ref=e218]:
+                    - generic "Optimizer score 90" [ref=e219]:
+                      - strong [ref=e222]: "90"
+                  - cell "Accept and dispatch" [ref=e223]
+                - row "OKG-1042 Intermountain Medical Manual Reno, NV Provo, UT $2,200 4.26/mi 53 Van Optimizer score 54 Hold until capacity improves" [ref=e224] [cursor=pointer]:
+                  - cell "OKG-1042 Intermountain Medical" [ref=e225]:
+                    - button "OKG-1042 Intermountain Medical" [ref=e226]:
+                      - strong [ref=e227]: OKG-1042
+                      - generic [ref=e228]: Intermountain Medical
+                  - cell "Manual" [ref=e229]:
+                    - generic [ref=e230]: Manual
+                  - cell "Reno, NV Provo, UT" [ref=e231]:
+                    - strong [ref=e232]: Reno, NV
+                    - generic [ref=e233]: Provo, UT
+                  - cell "$2,200 4.26/mi" [ref=e234]:
+                    - strong [ref=e235]: $2,200
+                    - generic [ref=e236]: 4.26/mi
+                  - cell "53 Van" [ref=e237]
+                  - cell "Optimizer score 54" [ref=e238]:
+                    - generic "Optimizer score 54" [ref=e239]:
+                      - strong [ref=e242]: "54"
+                  - cell "Hold until capacity improves" [ref=e243]
+            - generic [ref=e244]:
+              - generic [ref=e245]:
+                - generic [ref=e246]: Operations Inbox
+                - button "Need SLC pickup appointment for OKG-1048 11m · Ari Chen, Blue Ridge" [ref=e249] [cursor=pointer]:
+                  - generic [ref=e250]: Need SLC pickup appointment for OKG-1048
+                  - generic [ref=e251]: 11m · Ari Chen, Blue Ridge
+                - button "FourKites invite not accepted 24m · Northstar Tracking" [ref=e252] [cursor=pointer]:
+                  - generic [ref=e253]: FourKites invite not accepted
+                  - generic [ref=e254]: 24m · Northstar Tracking
+                - button "Boise load confirmation attached 1h · Wasatch Traffic" [ref=e255] [cursor=pointer]:
+                  - generic [ref=e256]: Boise load confirmation attached
+                  - generic [ref=e257]: 1h · Wasatch Traffic
+              - generic [ref=e258]:
+                - generic [ref=e259]:
+                  - img [ref=e260]
+                  - text: RMI drivers
+                - generic [ref=e263]:
+                  - generic [ref=e264]: Late tracking acceptance
+                  - strong [ref=e265]: "-4"
+                - generic [ref=e266]:
+                  - generic [ref=e267]: Appointment confirmed before pickup
+                  - strong [ref=e268]: "+3"
+                - generic [ref=e269]:
+                  - generic [ref=e270]: POD exception after delivery
+                  - strong [ref=e271]: "-3"
+                - generic [ref=e272]:
+                  - generic [ref=e273]: Fast broker response under 15m
+                  - strong [ref=e274]: "+2"
+          - generic [ref=e275]:
+            - generic [ref=e276]:
+              - generic [ref=e277]:
+                - img [ref=e278]
+                - text: Tracking watch
+              - generic [ref=e286]:
+                - strong [ref=e287]: OKG-1051
+                - generic [ref=e288]: Denver, CO to Dallas, TX
+              - generic [ref=e289]:
+                - generic [ref=e290]: 13:08
+                - strong [ref=e291]: Pueblo, CO
+                - generic [ref=e292]: Motive ELD
+              - generic [ref=e293]:
+                - generic [ref=e294]: 12:37
+                - strong [ref=e295]: Walsenburg, CO
+                - generic [ref=e296]: Motive ELD
+              - generic [ref=e297]:
+                - generic [ref=e298]: 12:02
+                - strong [ref=e299]: Colorado Springs, CO
+                - generic [ref=e300]: MacroPoint
+            - generic [ref=e301]:
+              - generic [ref=e302]:
+                - img [ref=e303]
+                - text: Profit pulse
+              - generic [ref=e306]: $4,045
+              - paragraph [ref=e307]: 34% booked margin across 4 active V1 loads.
+              - generic [ref=e308]:
+                - generic [ref=e309]:
+                  - generic [ref=e310]: OKG-1048
+                  - strong [ref=e313]: $1,025
+                - generic [ref=e314]:
+                  - generic [ref=e315]: OKG-1051
+                  - strong [ref=e318]: $1,170
+                - generic [ref=e319]:
+                  - generic [ref=e320]: OKG-1054
+                  - strong [ref=e323]: $1,160
+                - generic [ref=e324]:
+                  - generic [ref=e325]: OKG-1042
+                  - strong [ref=e328]: $690
+      - complementary [ref=e329]:
+        - generic [ref=e330]:
+          - img [ref=e332]
+          - generic [ref=e335]:
+            - heading "AI Dispatch Rail" [level=2] [ref=e336]
+            - paragraph [ref=e337]: Selected load recommendation and exception queue.
+        - generic [ref=e338]:
+          - generic [ref=e339]: Next action
+          - strong [ref=e340]: Hold until capacity improves
+          - paragraph [ref=e341]: OKG-1051 has optimizer score 46, RMI score 85, and high ETA risk.
+          - button "Send dispatcher update" [ref=e342] [cursor=pointer]:
+            - img [ref=e343]
+            - text: Send dispatcher update
+        - generic [ref=e346]:
+          - generic [ref=e347]:
+            - img [ref=e348]
+            - text: Selected load
+          - generic [ref=e352]:
+            - generic [ref=e353]: Lane
+            - strong [ref=e354]: Denver, CO → Dallas, TX
+          - generic [ref=e355]:
+            - generic [ref=e356]: Appointment
+            - strong [ref=e357]: Delivery appointment unconfirmed
+          - generic [ref=e358]:
+            - generic [ref=e359]: Tracking
+            - strong [ref=e360]: FourKites pending, ELD pings active
+          - generic [ref=e361]:
+            - generic [ref=e362]: Invoice
+            - strong [ref=e363]: Not ready
+        - generic [ref=e364]:
+          - generic [ref=e365]:
+            - img [ref=e366]
+            - text: Org adapters
+          - generic [ref=e372]:
+            - generic [ref=e373]: DAT
+            - generic [ref=e374]: Mock shell
+          - generic [ref=e375]:
+            - generic [ref=e376]: Truckstop / Internet Truckstop
+            - generic [ref=e377]: Mock shell
+          - generic [ref=e378]:
+            - generic [ref=e379]: Gmail
+            - generic [ref=e380]: Connected
+          - generic [ref=e381]:
+            - generic [ref=e382]: Outlook
+            - generic [ref=e383]: Mock shell
+          - generic [ref=e384]:
+            - generic [ref=e385]: Google Calendar
+            - generic [ref=e386]: Connected
