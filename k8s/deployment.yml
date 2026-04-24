@@ -16,6 +16,7 @@ spec:
     spec:
       containers:
         - name: freightsimple-ai
+          # Placeholder replaced at deploy time by `kustomize edit set image` — do not change manually.
           image: LOCATION-docker.pkg.dev/PROJECT_ID/REPOSITORY/IMAGE:TAG
           ports:
             - containerPort: 80
