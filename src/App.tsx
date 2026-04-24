@@ -475,12 +475,86 @@ const nav = [
 ]
 
 function App() {
-  const [activeView, setActiveView] = useState('dashboard')
+  const [activeView, setActiveView] = useState(() => viewFromPath(window.location.pathname))
   const [selectedLoadId, setSelectedLoadId] = useState(loads[1].id)
+  const [manualWorkflow, setManualWorkflow] = useState<ManualWorkflowState>(() => readManualWorkflow())
+  const [lastCreatedLoad, setLastCreatedLoad] = useState('')
   const selectedLoad = loads.find((load) => load.id === selectedLoadId) ?? loads[0]
   const selectedDriver = drivers.find((driver) => driver.id === selectedLoad.driverId)
   const selectedTruck = trucks.find((truck) => truck.id === selectedLoad.truckId)
   const selectedThread = threads.find((thread) => thread.id === selectedLoad.emailThreadId)
+
+  useEffect(() => {
+    const onPopState = () => setActiveView(viewFromPath(window.location.pathname))
+    window.addEventListener('popstate', onPopState)
+    return () => window.removeEventListener('popstate', onPopState)
+  }, [])
+
+  useEffect(() => {
+    window.localStorage.setItem(manualWorkflowStorageKey, JSON.stringify(manualWorkflow))
+  }, [manualWorkflow])
+
+  function navigate(view: string) {
+    window.history.pushState({}, '', pathFromView(view))
+    setActiveView(view)
+  }
+
+  function addManualLoad(form: ManualLoadForm) {
+    const now = new Date().toISOString()
+    const loadId = makeManualId('load')
+    const rate = Number(form.rate)
+    const load: ManualLoad = {
+      id: loadId,
+      loadNumber: form.loadNumber.trim(),
+      company: form.company.trim(),
+      pickupCity: form.pickupCity.trim(),
+      deliveryCity: form.deliveryCity.trim(),
+      pickupDate: form.pickupDate,
+      deliveryDate: form.deliveryDate,
+      rate,
+      estimatedCost: Number(form.estimatedCost),
+      createdAt: now,
+    }
+    const tasks = manualTaskTitles.map((title, index): ManualTask => ({
+      id: makeManualId('task'),
+      loadId,
+      loadNumber: load.loadNumber,
+      title,
+      dueDate: manualTaskDueDate(title, load, index),
+      status: 'Open',
+    }))
+    const invoice: ManualInvoice = {
+      id: makeManualId('invoice'),
+      loadId,
+      loadNumber: load.loadNumber,
+      company: load.company,
+      amount: rate,
+      status: 'Draft',
+      createdAt: now,
+    }
+
+    setManualWorkflow((current) => ({
+      loads: [load, ...current.loads],
+      tasks: [...tasks, ...current.tasks],
+      invoices: [invoice, ...current.invoices],
+    }))
+    setLastCreatedLoad(load.loadNumber)
+    navigate('loads')
+  }
+
+  function completeManualTask(taskId: string) {
+    setManualWorkflow((current) => ({
+      ...current,
+      tasks: current.tasks.map((task) => task.id === taskId ? { ...task, status: 'Complete' } : task),
+    }))
+  }
+
+  function updateManualInvoice(invoiceId: string, status: ManualInvoiceStatus) {
+    setManualWorkflow((current) => ({
+      ...current,
+      invoices: current.invoices.map((invoice) => invoice.id === invoiceId ? { ...invoice, status } : invoice),
+    }))
+  }
 
   const metrics = useMemo(() => {
     const availableTrucks = trucks.filter((truck) => truck.status === 'available').length
@@ -489,9 +563,12 @@ function App() {
     const rmi = calculateRmiScore(loads, rmiEvents)
     const gross = loads.reduce((sum, load) => sum + load.rate, 0)
     const margin = loads.reduce((sum, load) => sum + (load.rate - load.marginCost), 0)
+    const manualMargin = manualWorkflow.loads.reduce((sum, load) => sum + load.rate - load.estimatedCost, 0)
 
     return {
-      activeLoads: loads.filter((load) => load.stage !== 'Delivered').length,
+      activeLoads: loads.filter((load) => load.stage !== 'Delivered').length + manualWorkflow.loads.length,
+      tasksDue: manualWorkflow.tasks.filter((task) => task.status === 'Open').length,
+      openInvoices: manualWorkflow.invoices.filter((invoice) => invoice.status !== 'Paid').length,
       atRisk: loads.filter((load) => load.risk !== 'low').length,
       availableTrucks,
       pendingAppointments: loads.filter((load) => !load.appointmentStatus.includes('confirmed') && load.stage !== 'Invoice pending').length,
@@ -499,17 +576,17 @@ function App() {
       trackingCompliant,
       rmi,
       gross,
-      margin,
-      marginPct: Math.round((margin / gross) * 100),
+      margin: margin + manualMargin,
+      marginPct: Math.round(((margin + manualMargin) / (gross + manualWorkflow.loads.reduce((sum, load) => sum + load.rate, 0))) * 100),
     }
-  }, [])
+  }, [manualWorkflow])
 
   const selectedOptimization = optimizeLoad(selectedLoad, metrics.availableTrucks)
 
   return (
     <div className="app-shell">
       <aside className="sidebar">
-        <button className="brand" onClick={() => setActiveView('dashboard')} type="button">
+        <button className="brand" onClick={() => navigate('dashboard')} type="button">
           <span className="brand-mark">OK</span>
           <span>
             <strong>OK GO Freight</strong>
@@ -524,7 +601,7 @@ function App() {
               <button
                 className={activeView === item.id ? 'nav-item active' : 'nav-item'}
                 key={item.id}
-                onClick={() => setActiveView(item.id)}
+                onClick={() => navigate(item.id)}
                 type="button"
               >
                 <Icon size={17} />
@@ -556,16 +633,16 @@ function App() {
               <Search size={16} />
               <input aria-label="Search loads, emails, trucks" placeholder="Search loads, emails, trucks" />
             </label>
-            <button className="primary-action" type="button">
-              <Sparkles size={16} /> AI next action
+            <button className="primary-action" onClick={() => navigate('add-load')} type="button">
+              <FilePlus2 size={16} /> Add manual load
             </button>
           </div>
         </header>
 
         <section className="metrics-grid" aria-label="Carrier dashboard metrics">
           <Metric icon={Truck} label="Active loads" value={metrics.activeLoads.toString()} tone="blue" />
-          <Metric icon={AlertTriangle} label="At-risk loads" value={metrics.atRisk.toString()} tone="red" />
-          <Metric icon={UserRoundCheck} label="Available trucks" value={metrics.availableTrucks.toString()} tone="green" />
+          <Metric icon={CheckCircle2} label="Tasks due" value={metrics.tasksDue.toString()} tone="amber" />
+          <Metric icon={ReceiptText} label="Open invoices" value={metrics.openInvoices.toString()} tone="red" />
           <Metric icon={CalendarClock} label="Pending appointments" value={metrics.pendingAppointments.toString()} tone="amber" />
           <Metric icon={Mail} label="Unanswered emails" value={metrics.unansweredEmails.toString()} tone="amber" />
           <Metric icon={Radio} label="Tracking compliance" value={`${metrics.trackingCompliant}%`} tone="green" />
@@ -573,24 +650,36 @@ function App() {
           <Metric icon={WalletCards} label="Gross margin" value={`${metrics.marginPct}%`} tone="green" />
         </section>
 
+        {lastCreatedLoad && (
+          <div className="success-banner" role="status">
+            <CheckCircle2 size={18} />
+            Load {lastCreatedLoad} saved. Five tasks and one draft invoice were created.
+          </div>
+        )}
+
         <div className="content-grid">
           <section className="panel main-panel">
             {activeView === 'dashboard' && (
               <Dashboard
                 metrics={metrics}
+                manualWorkflow={manualWorkflow}
                 selectedLoad={selectedLoad}
-                setActiveView={setActiveView}
+                setActiveView={navigate}
                 setSelectedLoadId={setSelectedLoadId}
               />
             )}
+            {activeView === 'add-load' && <AddManualLoadPage onSubmit={addManualLoad} />}
             {activeView === 'loads' && (
               <LoadHub
                 availableTruckCount={metrics.availableTrucks}
+                manualLoads={manualWorkflow.loads}
                 selectedLoadId={selectedLoadId}
-                setActiveView={setActiveView}
+                setActiveView={navigate}
                 setSelectedLoadId={setSelectedLoadId}
               />
             )}
+            {activeView === 'tasks' && <ManualTasksPage tasks={manualWorkflow.tasks} onComplete={completeManualTask} />}
+            {activeView === 'invoices' && <ManualInvoicesPage invoices={manualWorkflow.invoices} onUpdate={updateManualInvoice} />}
             {activeView === 'detail' && (
               <LoadDetail
                 load={selectedLoad}
@@ -636,16 +725,20 @@ function Metric({ icon: Icon, label, value, tone }: { icon: typeof Truck; label:
 
 function Dashboard({
   metrics,
+  manualWorkflow,
   selectedLoad,
   setActiveView,
   setSelectedLoadId,
 }: {
   metrics: ReturnType<typeof AppMetrics>
+  manualWorkflow: ManualWorkflowState
   selectedLoad: Load
   setActiveView: (view: string) => void
   setSelectedLoadId: (id: string) => void
 }) {
   const availableTruckCount = trucks.filter((truck) => truck.status === 'available').length
+  const dueTasks = manualWorkflow.tasks.filter((task) => task.status === 'Open').slice(0, 5)
+  const openInvoices = manualWorkflow.invoices.filter((invoice) => invoice.status !== 'Paid').slice(0, 5)
 
   return (
     <>
@@ -655,6 +748,32 @@ function Dashboard({
         copy="One operating surface for dispatch, inbox, appointments, tracking, RMI, CRM, and margin."
       />
       <div className="dashboard-layout">
+        <div className="split-panels">
+          <MiniPanel title="Manual Load -> Tasks -> Invoice" icon={FilePlus2}>
+            <div className="workflow-strip">
+              <button type="button" onClick={() => setActiveView('add-load')}>Add load</button>
+              <span>creates</span>
+              <button type="button" onClick={() => setActiveView('tasks')}>5 tasks</button>
+              <span>and</span>
+              <button type="button" onClick={() => setActiveView('invoices')}>Draft invoice</button>
+            </div>
+          </MiniPanel>
+          <MiniPanel title="Open manual work" icon={CheckCircle2}>
+            {dueTasks.length === 0 && <p className="muted">No open manual tasks.</p>}
+            {dueTasks.map((task) => (
+              <div className="score-row" key={task.id}>
+                <span>{task.loadNumber} · {task.title}</span>
+                <strong>{formatManualDate(task.dueDate)}</strong>
+              </div>
+            ))}
+            {openInvoices.map((invoice) => (
+              <div className="score-row" key={invoice.id}>
+                <span>{invoice.loadNumber} · {invoice.status} invoice</span>
+                <strong>{money(invoice.amount)}</strong>
+              </div>
+            ))}
+          </MiniPanel>
+        </div>
         <div className="stack">
           <LoadTable
             loads={loads}
