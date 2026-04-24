@@ -198,7 +198,9 @@ h2 {
 
 .primary-action,
 .rail-card button,
-.account-card button {
+.account-card button,
+.work-item button,
+.workflow-strip button {
   min-height: 40px;
   display: inline-flex;
   align-items: center;
@@ -213,6 +215,26 @@ h2 {
   font-size: 13px;
   font-weight: 750;
   cursor: pointer;
+}
+
+.primary-action:disabled,
+.work-item button:disabled {
+  cursor: not-allowed;
+  opacity: .45;
+}
+
+.success-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 16px;
+  padding: 12px 14px;
+  border: 1px solid #bfe6d2;
+  border-radius: 8px;
+  background: #ecfbf2;
+  color: #12734f;
+  font-size: 13px;
+  font-weight: 750;
 }
 
 .metrics-grid {
@@ -331,6 +353,23 @@ h2 {
   gap: 14px;
 }
 
+.workflow-strip {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  color: #667386;
+  font-size: 13px;
+}
+
+.workflow-strip button,
+.button-cluster button {
+  min-height: 34px;
+  border-color: #d8ddd6;
+  background: #ffffff;
+  color: #17202b;
+}
+
 .stack {
   display: grid;
   gap: 14px;
@@ -375,8 +414,82 @@ h2 {
 .profit-card,
 .info-block,
 .inbox-item,
-.rail-card {
+.rail-card,
+.work-item {
   padding: 14px;
+}
+
+.load-form {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  max-width: 920px;
+}
+
+.field {
+  display: grid;
+  gap: 7px;
+}
+
+.field span {
+  color: #344153;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.field input {
+  width: 100%;
+  min-height: 42px;
+  padding: 9px 11px;
+  border: 1px solid #d8ddd6;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #18202b;
+  font: inherit;
+}
+
+.form-actions {
+  grid-column: 1 / -1;
+  display: flex;
+  justify-content: flex-start;
+  padding-top: 4px;
+}
+
+.manual-table {
+  margin-top: 6px;
+}
+
+.work-list {
+  display: grid;
+  gap: 12px;
+}
+
+.work-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  border: 1px solid #dfe4dd;
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.work-item > div:first-child {
+  min-width: 0;
+  display: grid;
+  gap: 7px;
+}
+
+.work-item button {
+  min-height: 34px;
+  flex: 0 0 auto;
+}
+
+.button-cluster {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
 }
 
 .mini-title {

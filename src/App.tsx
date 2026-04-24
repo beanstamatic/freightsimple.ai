@@ -183,6 +183,21 @@ type ManualLoadForm = {
   estimatedCost: string
 }
 
+type DashboardMetrics = {
+  activeLoads: number
+  tasksDue: number
+  openInvoices: number
+  atRisk: number
+  availableTrucks: number
+  pendingAppointments: number
+  unansweredEmails: number
+  trackingCompliant: number
+  rmi: number
+  gross: number
+  margin: number
+  marginPct: number
+}
+
 const org: CarrierOrg = {
   id: 'org_okgo_carrier_v1',
   name: 'OK GO Freight — Carrier V1',
@@ -730,7 +745,7 @@ function Dashboard({
   setActiveView,
   setSelectedLoadId,
 }: {
-  metrics: ReturnType<typeof AppMetrics>
+  metrics: DashboardMetrics
   manualWorkflow: ManualWorkflowState
   selectedLoad: Load
   setActiveView: (view: string) => void
@@ -848,28 +863,15 @@ function Dashboard({
   )
 }
 
-function AppMetrics() {
-  return {
-    activeLoads: 0,
-    atRisk: 0,
-    availableTrucks: 0,
-    pendingAppointments: 0,
-    unansweredEmails: 0,
-    trackingCompliant: 0,
-    rmi: 0,
-    gross: 0,
-    margin: 0,
-    marginPct: 0,
-  }
-}
-
 function LoadHub({
   availableTruckCount,
+  manualLoads,
   selectedLoadId,
   setActiveView,
   setSelectedLoadId,
 }: {
   availableTruckCount: number
+  manualLoads: ManualLoad[]
   selectedLoadId: string
   setActiveView: (view: string) => void
   setSelectedLoadId: (id: string) => void
@@ -895,6 +897,9 @@ function LoadHub({
           setActiveView('detail')
         }}
       />
+      <MiniPanel title="Manual loads" icon={FilePlus2}>
+        <ManualLoadsTable loads={manualLoads} />
+      </MiniPanel>
     </>
   )
 }
@@ -1034,6 +1039,137 @@ function OperationsInbox({
             </div>
             <div className="action-row">
               {actions.map((action) => <button type="button" key={action}>{action}</button>)}
+            </div>
+          </article>
+        ))}
+      </div>
+    </>
+  )
+}
+
+function AddManualLoadPage({ onSubmit }: { onSubmit: (form: ManualLoadForm) => void }) {
+  const [form, setForm] = useState<ManualLoadForm>(emptyManualLoadForm)
+
+  function update(field: keyof ManualLoadForm, value: string) {
+    setForm((current) => ({ ...current, [field]: value }))
+  }
+
+  function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    onSubmit(form)
+    setForm(emptyManualLoadForm)
+  }
+
+  return (
+    <>
+      <PanelHeader
+        icon={FilePlus2}
+        title="Add Manual Load"
+        copy="Save one load and the app will create the five standard tasks plus a draft invoice for the rate."
+      />
+      <form className="load-form" onSubmit={submit}>
+        <ManualField label="Load number" value={form.loadNumber} onChange={(value) => update('loadNumber', value)} required />
+        <ManualField label="Company" value={form.company} onChange={(value) => update('company', value)} required />
+        <ManualField label="Pickup city" value={form.pickupCity} onChange={(value) => update('pickupCity', value)} required />
+        <ManualField label="Delivery city" value={form.deliveryCity} onChange={(value) => update('deliveryCity', value)} required />
+        <ManualField label="Pickup date" type="date" value={form.pickupDate} onChange={(value) => update('pickupDate', value)} required />
+        <ManualField label="Delivery date" type="date" value={form.deliveryDate} onChange={(value) => update('deliveryDate', value)} required />
+        <ManualField label="Rate" min="0" step="0.01" type="number" value={form.rate} onChange={(value) => update('rate', value)} required />
+        <ManualField label="Estimated cost" min="0" step="0.01" type="number" value={form.estimatedCost} onChange={(value) => update('estimatedCost', value)} required />
+        <div className="form-actions">
+          <button className="primary-action" type="submit">
+            <Send size={16} /> Save load
+          </button>
+        </div>
+      </form>
+    </>
+  )
+}
+
+function ManualLoadsTable({ loads: manualLoads }: { loads: ManualLoad[] }) {
+  if (manualLoads.length === 0) return <p className="muted">No manual loads yet.</p>
+
+  return (
+    <div className="table-wrap manual-table">
+      <table>
+        <thead>
+          <tr>
+            <th>Load</th>
+            <th>Company</th>
+            <th>Lane</th>
+            <th>Dates</th>
+            <th>Rate</th>
+            <th>Est. cost</th>
+            <th>Margin</th>
+          </tr>
+        </thead>
+        <tbody>
+          {manualLoads.map((load) => (
+            <tr key={load.id}>
+              <td><strong>{load.loadNumber}</strong></td>
+              <td>{load.company}</td>
+              <td>
+                <strong>{load.pickupCity}</strong>
+                <small>{load.deliveryCity}</small>
+              </td>
+              <td>
+                <strong>{formatManualDate(load.pickupDate)}</strong>
+                <small>{formatManualDate(load.deliveryDate)}</small>
+              </td>
+              <td>{money(load.rate)}</td>
+              <td>{money(load.estimatedCost)}</td>
+              <td>{money(load.rate - load.estimatedCost)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )
+}
+
+function ManualTasksPage({ tasks, onComplete }: { tasks: ManualTask[]; onComplete: (id: string) => void }) {
+  return (
+    <>
+      <PanelHeader icon={CheckCircle2} title="Tasks" copy="Auto-created manual load tasks. Mark each complete as the load moves from pickup to payment." />
+      <div className="work-list">
+        {tasks.map((task) => (
+          <article className="work-item" key={task.id}>
+            <div>
+              <Chip tone={task.status === 'Complete' ? 'green' : 'amber'}>{task.status}</Chip>
+              <strong>{task.title}</strong>
+              <small>{task.loadNumber} · Due {formatManualDate(task.dueDate)}</small>
+            </div>
+            <button disabled={task.status === 'Complete'} onClick={() => onComplete(task.id)} type="button">
+              <CheckCircle2 size={16} /> Mark complete
+            </button>
+          </article>
+        ))}
+      </div>
+    </>
+  )
+}
+
+function ManualInvoicesPage({
+  invoices,
+  onUpdate,
+}: {
+  invoices: ManualInvoice[]
+  onUpdate: (id: string, status: ManualInvoiceStatus) => void
+}) {
+  return (
+    <>
+      <PanelHeader icon={ReceiptText} title="Invoices" copy="Each manual load creates a Draft invoice with amount equal to the load rate." />
+      <div className="work-list">
+        {invoices.map((invoice) => (
+          <article className="work-item" key={invoice.id}>
+            <div>
+              <Chip tone={invoice.status === 'Paid' ? 'green' : invoice.status === 'Sent' ? 'blue' : 'gray'}>{invoice.status}</Chip>
+              <strong>{invoice.loadNumber} · {invoice.company}</strong>
+              <small>{money(invoice.amount)} · Created {formatManualDate(invoice.createdAt)}</small>
+            </div>
+            <div className="button-cluster">
+              <button disabled={invoice.status !== 'Draft'} onClick={() => onUpdate(invoice.id, 'Sent')} type="button">Mark sent</button>
+              <button disabled={invoice.status === 'Paid'} onClick={() => onUpdate(invoice.id, 'Paid')} type="button">Mark paid</button>
             </div>
           </article>
         ))}
@@ -1291,6 +1427,79 @@ function statusTone(status: Status) {
   if (status === 'degraded') return 'red'
   if (status === 'mocked') return 'blue'
   return 'gray'
+}
+
+function ManualField({
+  label,
+  value,
+  onChange,
+  type = 'text',
+  required = false,
+  min,
+  step,
+}: {
+  label: string
+  value: string
+  onChange: (value: string) => void
+  type?: string
+  required?: boolean
+  min?: string
+  step?: string
+}) {
+  return (
+    <label className="field">
+      <span>{label}</span>
+      <input min={min} onChange={(event) => onChange(event.target.value)} required={required} step={step} type={type} value={value} />
+    </label>
+  )
+}
+
+function readManualWorkflow(): ManualWorkflowState {
+  try {
+    const stored = window.localStorage.getItem(manualWorkflowStorageKey)
+    if (!stored) return starterManualWorkflow
+    const parsed = JSON.parse(stored) as ManualWorkflowState
+    if (!Array.isArray(parsed.loads) || !Array.isArray(parsed.tasks) || !Array.isArray(parsed.invoices)) {
+      return starterManualWorkflow
+    }
+    return parsed
+  } catch {
+    return starterManualWorkflow
+  }
+}
+
+function viewFromPath(pathname: string) {
+  if (pathname === '/add-load') return 'add-load'
+  if (pathname === '/loads') return 'loads'
+  if (pathname === '/tasks') return 'tasks'
+  if (pathname === '/invoices') return 'invoices'
+  return 'dashboard'
+}
+
+function pathFromView(view: string) {
+  if (view === 'add-load') return '/add-load'
+  if (view === 'loads') return '/loads'
+  if (view === 'tasks') return '/tasks'
+  if (view === 'invoices') return '/invoices'
+  return '/'
+}
+
+function makeManualId(prefix: string) {
+  return `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2)}`
+}
+
+function manualTaskDueDate(title: string, load: ManualLoad, index: number) {
+  if (title === 'Confirm pickup') return load.pickupDate
+  if (title === 'Deliver load' || title === 'Request POD' || title === 'Send invoice') return load.deliveryDate
+  const followUp = new Date(`${load.deliveryDate}T12:00:00`)
+  followUp.setDate(followUp.getDate() + 7 + index)
+  return followUp.toISOString().slice(0, 10)
+}
+
+function formatManualDate(value: string) {
+  if (!value) return 'Not set'
+  const date = new Date(value.includes('T') ? value : `${value}T12:00:00`)
+  return new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).format(date)
 }
 
 export default App
