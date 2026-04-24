@@ -1,4 +1,5 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import type { FormEvent } from 'react'
 import {
   Activity,
   AlertTriangle,
@@ -10,6 +11,7 @@ import {
   CircleDollarSign,
   ClipboardList,
   Cloud,
+  FilePlus2,
   Gauge,
   Inbox,
   Link2,
@@ -28,6 +30,7 @@ import {
   UserRoundCheck,
   UsersRound,
   WalletCards,
+  ReceiptText,
 } from 'lucide-react'
 import './App.css'
 
@@ -126,6 +129,58 @@ type CustomerAccount = {
   pipeline: string
   openLoads: number
   health: 'strong' | 'watch' | 'new'
+}
+
+type ManualTaskStatus = 'Open' | 'Complete'
+type ManualInvoiceStatus = 'Draft' | 'Sent' | 'Paid'
+
+type ManualLoad = {
+  id: string
+  loadNumber: string
+  company: string
+  pickupCity: string
+  deliveryCity: string
+  pickupDate: string
+  deliveryDate: string
+  rate: number
+  estimatedCost: number
+  createdAt: string
+}
+
+type ManualTask = {
+  id: string
+  loadId: string
+  loadNumber: string
+  title: string
+  dueDate: string
+  status: ManualTaskStatus
+}
+
+type ManualInvoice = {
+  id: string
+  loadId: string
+  loadNumber: string
+  company: string
+  amount: number
+  status: ManualInvoiceStatus
+  createdAt: string
+}
+
+type ManualWorkflowState = {
+  loads: ManualLoad[]
+  tasks: ManualTask[]
+  invoices: ManualInvoice[]
+}
+
+type ManualLoadForm = {
+  loadNumber: string
+  company: string
+  pickupCity: string
+  deliveryCity: string
+  pickupDate: string
+  deliveryDate: string
+  rate: string
+  estimatedCost: string
 }
 
 const org: CarrierOrg = {
@@ -322,6 +377,55 @@ const crmAccounts: CustomerAccount[] = [
   { id: 'acct-3', name: 'Wasatch Building Supply', owner: 'Greg', lastTouch: '1h ago', pipeline: '$31.4k direct', openLoads: 2, health: 'new' },
 ]
 
+const manualWorkflowStorageKey = 'freightsimple.manual-load-workflow'
+const manualTaskTitles = ['Confirm pickup', 'Deliver load', 'Request POD', 'Send invoice', 'Follow up payment']
+
+const emptyManualLoadForm: ManualLoadForm = {
+  loadNumber: '',
+  company: '',
+  pickupCity: '',
+  deliveryCity: '',
+  pickupDate: '',
+  deliveryDate: '',
+  rate: '',
+  estimatedCost: '',
+}
+
+const starterManualWorkflow: ManualWorkflowState = {
+  loads: [
+    {
+      id: 'manual-demo-load',
+      loadNumber: 'OKG-2000',
+      company: 'Canyon Produce',
+      pickupCity: 'Denver, CO',
+      deliveryCity: 'Las Vegas, NV',
+      pickupDate: '2026-04-27',
+      deliveryDate: '2026-04-29',
+      rate: 4200,
+      estimatedCost: 2600,
+      createdAt: '2026-04-24T15:30:00.000Z',
+    },
+  ],
+  tasks: [
+    { id: 'manual-demo-task-1', loadId: 'manual-demo-load', loadNumber: 'OKG-2000', title: 'Confirm pickup', dueDate: '2026-04-27', status: 'Open' },
+    { id: 'manual-demo-task-2', loadId: 'manual-demo-load', loadNumber: 'OKG-2000', title: 'Deliver load', dueDate: '2026-04-29', status: 'Open' },
+    { id: 'manual-demo-task-3', loadId: 'manual-demo-load', loadNumber: 'OKG-2000', title: 'Request POD', dueDate: '2026-04-29', status: 'Open' },
+    { id: 'manual-demo-task-4', loadId: 'manual-demo-load', loadNumber: 'OKG-2000', title: 'Send invoice', dueDate: '2026-04-29', status: 'Open' },
+    { id: 'manual-demo-task-5', loadId: 'manual-demo-load', loadNumber: 'OKG-2000', title: 'Follow up payment', dueDate: '2026-05-07', status: 'Open' },
+  ],
+  invoices: [
+    {
+      id: 'manual-demo-invoice',
+      loadId: 'manual-demo-load',
+      loadNumber: 'OKG-2000',
+      company: 'Canyon Produce',
+      amount: 4200,
+      status: 'Draft',
+      createdAt: '2026-04-24T15:30:00.000Z',
+    },
+  ],
+}
+
 function optimizeLoad(load: Load, availableTruckCount: number) {
   const rpm = load.rate / load.miles
   const margin = load.rate - load.marginCost
@@ -357,7 +461,10 @@ function statusLabel(status: Status) {
 
 const nav = [
   { id: 'dashboard', label: 'Dashboard', icon: Gauge },
+  { id: 'add-load', label: 'Add Load', icon: FilePlus2 },
   { id: 'loads', label: 'Load Hub', icon: ClipboardList },
+  { id: 'tasks', label: 'Tasks', icon: CheckCircle2 },
+  { id: 'invoices', label: 'Invoices', icon: ReceiptText },
   { id: 'detail', label: 'Load Detail', icon: Route },
   { id: 'inbox', label: 'Operations Inbox', icon: Inbox },
   { id: 'tracking', label: 'Tracking', icon: MapPinned },
