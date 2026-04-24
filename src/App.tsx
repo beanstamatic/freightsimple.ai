@@ -30,6 +30,7 @@ import {
   WalletCards,
   ReceiptText,
 } from 'lucide-react'
+import { loadManualWorkflowState, persistManualWorkflowState } from './lib/workflow/repository'
 import './App.css'
 
 type Status = 'connected' | 'mocked' | 'degraded' | 'disconnected'
@@ -490,12 +491,26 @@ const nav = [
 function App() {
   const [activeView, setActiveView] = useState(() => viewFromPath(window.location.pathname))
   const [selectedLoadId, setSelectedLoadId] = useState(loads[1].id)
-  const [manualWorkflow, setManualWorkflow] = useState<ManualWorkflowState>(() => readManualWorkflow())
+  const [manualWorkflow, setManualWorkflow] = useState<ManualWorkflowState>(starterManualWorkflow)
+  const [workflowSource, setWorkflowSource] = useState<'local' | 'supabase'>('local')
   const [lastCreatedLoad, setLastCreatedLoad] = useState('')
+  const carrierOrgId = import.meta.env.VITE_DEFAULT_CARRIER_ORG_ID ?? org.id
   const selectedLoad = loads.find((load) => load.id === selectedLoadId) ?? loads[0]
   const selectedDriver = drivers.find((driver) => driver.id === selectedLoad.driverId)
   const selectedTruck = trucks.find((truck) => truck.id === selectedLoad.truckId)
   const selectedThread = threads.find((thread) => thread.id === selectedLoad.emailThreadId)
+
+  useEffect(() => {
+    let active = true
+    loadManualWorkflowState(carrierOrgId, manualWorkflowStorageKey).then(({ state, source }) => {
+      if (!active) return
+      setManualWorkflow(state)
+      setWorkflowSource(source)
+    })
+    return () => {
+      active = false
+    }
+  }, [carrierOrgId])
 
   useEffect(() => {
     const onPopState = () => setActiveView(viewFromPath(window.location.pathname))
@@ -504,8 +519,8 @@ function App() {
   }, [])
 
   useEffect(() => {
-    window.localStorage.setItem(manualWorkflowStorageKey, JSON.stringify(manualWorkflow))
-  }, [manualWorkflow])
+    void persistManualWorkflowState(carrierOrgId, manualWorkflow, manualWorkflowStorageKey)
+  }, [carrierOrgId, manualWorkflow])
 
   function navigate(view: string) {
     window.history.pushState({}, '', pathFromView(view))
@@ -626,9 +641,10 @@ function App() {
 
         <div className="org-card">
           <span className="eyebrow">New org</span>
-            <strong>{org.name}</strong>
+          <strong>{org.name}</strong>
           <small>freightsimple.ai</small>
           <small>{org.dot} · {org.mc}</small>
+          <small>Workflow persistence: {workflowSource}</small>
           <div className="lane-stack">
             {org.lanes.map((lane) => <span key={lane}>{lane}</span>)}
           </div>
@@ -1450,20 +1466,6 @@ function ManualField({
       <input min={min} onChange={(event) => onChange(event.target.value)} required={required} step={step} type={type} value={value} />
     </label>
   )
-}
-
-function readManualWorkflow(): ManualWorkflowState {
-  try {
-    const stored = window.localStorage.getItem(manualWorkflowStorageKey)
-    if (!stored) return starterManualWorkflow
-    const parsed = JSON.parse(stored) as ManualWorkflowState
-    if (!Array.isArray(parsed.loads) || !Array.isArray(parsed.tasks) || !Array.isArray(parsed.invoices)) {
-      return starterManualWorkflow
-    }
-    return parsed
-  } catch {
-    return starterManualWorkflow
-  }
 }
 
 function viewFromPath(pathname: string) {
